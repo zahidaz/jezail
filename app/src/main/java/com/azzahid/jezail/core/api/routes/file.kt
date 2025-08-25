@@ -1,0 +1,263 @@
+package com.azzahid.jezail.core.api.routes
+
+import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.core.api.Success
+import com.azzahid.jezail.features.managers.FileManager
+import com.azzahid.jezail.features.managers.zipDirectory
+import com.azzahid.jezail.features.withRootFSFile
+import io.github.smiley4.ktoropenapi.delete
+import io.github.smiley4.ktoropenapi.get
+import io.github.smiley4.ktoropenapi.post
+import io.github.smiley4.ktoropenapi.route
+import io.ktor.http.content.PartData
+import io.ktor.http.content.forEachPart
+import io.ktor.server.request.receiveMultipart
+import io.ktor.server.request.receiveText
+import io.ktor.server.response.header
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondFile
+import io.ktor.server.routing.Route
+import io.ktor.utils.io.jvm.javaio.copyTo
+import java.io.File
+import java.util.UUID
+
+fun Route.filesRoutes() {
+    route("/file", {
+        description = "File system management endpoints"
+    }) {
+        get("/info", {
+            description = "Get information about a file or directory"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the file or directory"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            call.respond(Success(FileManager.getFileInfo(path)))
+        }
+
+        get("/list", {
+            description = "List contents of a directory"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the directory to list"
+                    required = false
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"] ?: "/"
+            call.respond(Success(FileManager.listDirectory(path)))
+        }
+
+        get("/read", {
+            description = "Read the contents of a text file"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the text file to read"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            val content = FileManager.readFile(path)
+            call.respond(Success(mapOf("content" to content)))
+        }
+
+        post("/upload", {
+            description = "Upload a file to the device"
+            request {
+                queryParameter<String>("path") {
+                    description = "Destination path where the file should be saved"
+                    required = true
+                }
+                body<ByteArray> {
+                    description = "Multipart form data containing the file to upload"
+                }
+            }
+        }) {
+            val multipart = call.receiveMultipart(formFieldLimit = 999L * 1024 * 1024)
+            val destPath = call.request.queryParameters["path"].orEmpty()
+            require(destPath.isNotBlank()) { "Destination path is required" }
+            withRootFSFile(destPath) { df ->
+                require(!df.exists()) { "File exists: ${df.absolutePath}" }
+                multipart.forEachPart { part ->
+                    if (part is PartData.FileItem) {
+                        df.newOutputStream().use { output ->
+                            part.provider().copyTo(output)
+                        }
+                    }
+                    part.dispose()
+                }
+                call.respond(Success("File uploaded"))
+            }
+        }
+
+        get("/download", {
+            description = "Download files or directories (zip) from the device"
+            request {
+                queryParameter<List<String>>("paths") {
+                    description = "List of paths to files or directories to download"
+                    required = true
+                }
+            }
+        }) {
+            val srcPaths = call.request.queryParameters.getAll("paths") ?: emptyList()
+            require(srcPaths.isNotEmpty()) { "At least one path is required" }
+
+            val uuid = UUID.randomUUID().toString()
+            val downloadDir =
+                File(MyApplication.appContext.getExternalFilesDir(null), "download/$uuid")
+            downloadDir.mkdirs()
+
+            srcPaths.forEach { srcPath ->
+                withRootFSFile(srcPath) { srcFile ->
+                    val destFile = File(downloadDir, srcFile.name)
+                    if (srcFile.isDirectory) {
+                        srcFile.copyRecursively(destFile, overwrite = true)
+                    } else {
+                        srcFile.copyTo(destFile, overwrite = true)
+                    }
+                }
+            }
+
+            val downloadableFile =
+                if (srcPaths.size == 1 && withRootFSFile(srcPaths.first()) { it.isFile }) {
+                    File(downloadDir, File(srcPaths.first()).name)
+                } else {
+                    zipDirectory(downloadDir, uuid) ?: throw Exception("Failed to zip files")
+                }
+
+            call.response.header(
+                "Content-Disposition",
+                "attachment; filename=\"${downloadableFile.name}.${downloadableFile.extension}\""
+            )
+            call.respondFile(downloadableFile)
+            downloadDir.deleteRecursively()
+        }
+
+
+        post("/write", {
+            description = "Write content to a text file"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path where the file should be written"
+                    required = true
+                }
+                body<String> {
+                    description = "Text content to write to the file"
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            val content = call.receiveText()
+            FileManager.writeFile(path, content)
+            call.respond(Success("File written"))
+        }
+
+        post("/rename", {
+            description = "Rename or move a file or directory"
+            request {
+                queryParameter<String>("oldPath") {
+                    description = "Current path of the file or directory"
+                    required = true
+                }
+                queryParameter<String>("newPath") {
+                    description = "New path for the file or directory"
+                    required = true
+                }
+            }
+        }) {
+            val oldPath = call.request.queryParameters["oldPath"].orEmpty()
+            val newPath = call.request.queryParameters["newPath"].orEmpty()
+            FileManager.renameFile(oldPath, newPath)
+            call.respond(Success("File renamed"))
+        }
+
+        post("/mkdir", {
+            description = "Create a new directory"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path where the directory should be created"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            FileManager.createDirectory(path)
+            call.respond(Success("Directory created"))
+        }
+
+        post("/chmod", {
+            description = "Change file or directory permissions"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the file or directory"
+                    required = true
+                }
+                queryParameter<String>("permissions") {
+                    description = "Permissions in octal format (e.g., 755, 644)"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            val perm = call.request.queryParameters["permissions"].orEmpty()
+            FileManager.changePermissions(path, perm)
+            call.respond(Success("Permissions changed"))
+        }
+
+        post("/chown", {
+            description = "Change file or directory ownership"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the file or directory"
+                    required = true
+                }
+                queryParameter<String>("owner") {
+                    description = "New owner for the file or directory (root, shell, system ..)"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            val owner = call.request.queryParameters["owner"].orEmpty()
+            FileManager.changeOwnership(path, owner)
+            call.respond(Success("Ownership changed"))
+        }
+
+        post("/chgrp", {
+            description = "Change file or directory group"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the file or directory"
+                    required = true
+                }
+                queryParameter<String>("group") {
+                    description = "New group for the file or directory"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            val group = call.request.queryParameters["group"].orEmpty()
+            FileManager.changeGroup(path, group)
+            call.respond(Success("Group changed"))
+        }
+
+        delete({
+            description = "Delete a file or directory"
+            request {
+                queryParameter<String>("path") {
+                    description = "Path to the file or directory to delete"
+                    required = true
+                }
+            }
+        }) {
+            val path = call.request.queryParameters["path"].orEmpty()
+            FileManager.removeFile(path)
+            call.respond(Success("File removed"))
+        }
+    }
+}
