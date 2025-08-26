@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import com.azzahid.jezail.features.managers.AdbManager
 import com.azzahid.jezail.core.services.HttpServerService
+import com.azzahid.jezail.ui.screens.PermissionsScreen
 import com.azzahid.jezail.ui.screens.ServerControlScreen
 import com.azzahid.jezail.ui.theme.AppTheme
 import com.topjohnwu.superuser.Shell
@@ -33,6 +34,7 @@ class MainActivity : ComponentActivity() {
     private var isRooted by mutableStateOf(false)
     private var isAdbRunning by mutableStateOf(false)
     private var adbVersion by mutableStateOf("unknown")
+    private var showPermissionsScreen by mutableStateOf(false)
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -64,19 +66,26 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                ServerControlScreen(
-                    isServerRunning = isServerRunning,
-                    deviceIpAddress = deviceIpAddress,
-                    serverPort = serverPort,
-                    isRooted = isRooted,
-                    isAdbRunning = isAdbRunning,
-                    adbVersion = adbVersion,
-                    onStartServer = { startServer() },
-                    onStopServer = { stopServer() },
-                    onStartAdb = { startAdb() },
-                    onStopAdb = { stopAdb() },
-                    onOpenWebUI = { openWebUI() }
-                )
+                if (showPermissionsScreen) {
+                    PermissionsScreen(
+                        onNavigateBack = { showPermissionsScreen = false }
+                    )
+                } else {
+                    ServerControlScreen(
+                        isServerRunning = isServerRunning,
+                        deviceIpAddress = deviceIpAddress,
+                        serverPort = serverPort,
+                        isRooted = isRooted,
+                        isAdbRunning = isAdbRunning,
+                        adbVersion = adbVersion,
+                        onStartServer = { startServer() },
+                        onStopServer = { stopServer() },
+                        onStartAdb = { startAdb() },
+                        onStopAdb = { stopAdb() },
+                        onOpenWebUI = { openWebUI() },
+                        onOpenPermissions = { showPermissionsScreen = true }
+                    )
+                }
             }
         }
 

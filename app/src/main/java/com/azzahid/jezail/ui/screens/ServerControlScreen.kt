@@ -2,8 +2,10 @@ package com.azzahid.jezail.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -13,7 +15,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +43,8 @@ fun ServerControlScreen(
     onStopServer: () -> Unit,
     onStartAdb: () -> Unit,
     onStopAdb: () -> Unit,
-    onOpenWebUI: () -> Unit
+    onOpenWebUI: () -> Unit,
+    onOpenPermissions: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -97,12 +102,32 @@ fun ServerControlScreen(
                 onStopAdb = onStopAdb
             )
 
-            // Web Interface Launch Button
-            WebInterfaceButton(
-                isServerRunning = isServerRunning,
-                isRooted = isRooted,
-                onOpenWebUI = onOpenWebUI
-            )
+            // Action buttons row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Web Interface Launch Button
+                WebInterfaceButton(
+                    isServerRunning = isServerRunning,
+                    isRooted = isRooted,
+                    onOpenWebUI = onOpenWebUI,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Permissions button
+                OutlinedButton(
+                    onClick = onOpenPermissions,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    androidx.compose.material3.Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.padding(4.dp))
+                    Text("Permissions")
+                }
+            }
 
             // Root Warning (if not rooted)
             if (!isRooted) {

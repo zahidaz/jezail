@@ -84,6 +84,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx.v290)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -143,6 +145,10 @@ afterEvaluate {
     }
 
     tasks.named("mergeReleaseAssets") {
+        dependsOn(extractWebAssets)
+    }
+    
+    tasks.matching { it.name.contains("LintReportModel") }.configureEach {
         dependsOn(extractWebAssets)
     }
 }

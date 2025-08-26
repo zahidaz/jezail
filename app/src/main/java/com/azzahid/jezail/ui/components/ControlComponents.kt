@@ -142,12 +142,13 @@ fun AdbControls(
 fun WebInterfaceButton(
     isServerRunning: Boolean,
     isRooted: Boolean,
-    onOpenWebUI: () -> Unit
+    onOpenWebUI: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     FilledTonalButton(
         onClick = onOpenWebUI,
         enabled = isServerRunning && isRooted,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
         shape = RoundedCornerShape(8.dp),
