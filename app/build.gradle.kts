@@ -1,8 +1,11 @@
+import de.undercouch.gradle.tasks.download.Download
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlinx-serialization")
+    id("de.undercouch.download") version "5.6.0"
 }
 
 android {
@@ -109,3 +112,29 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
 }
+
+val downloadWebAssets = tasks.register<Download>("downloadWebAssets") {
+    src("https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip")
+    dest(layout.buildDirectory.file("downloads/web-assets.zip"))
+    onlyIfModified(true)
+    useETag(true)
+}
+
+val extractWebAssets = tasks.register<Copy>("extractWebAssets") {
+    dependsOn(downloadWebAssets)
+    from(zipTree(downloadWebAssets.get().dest))
+    into(layout.buildDirectory.dir("generated/assets/web"))
+}
+
+android {
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("${layout.buildDirectory.get()}/generated/assets")
+        }
+    }
+}
+
+tasks.withType<Task>().matching { it.name.contains("mergeAssets") }.configureEach {
+    dependsOn(extractWebAssets)
+}
+
