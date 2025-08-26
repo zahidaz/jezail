@@ -1,5 +1,6 @@
 package com.azzahid.jezail.features.managers
 
+import android.Manifest.permission.READ_PHONE_STATE
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ClipData
@@ -8,6 +9,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
@@ -19,6 +21,7 @@ import android.os.Build.VERSION_CODES.N_MR1
 import android.os.Environment
 import android.provider.Settings
 import android.telephony.TelephonyManager
+import androidx.core.content.ContextCompat.checkSelfPermission
 import com.azzahid.jezail.JezailApp
 import com.topjohnwu.superuser.Shell
 import java.io.File
@@ -311,39 +314,37 @@ object DeviceManager {
         } else emptyMap()
     }
 
-    @SuppressLint("MissingPermission", "HardwareIds")
-    fun getNetworkInfo(context: Context = JezailApp.Companion.appContext): Map<String, Any?> {
+
+    fun getNetworkInfo(context: Context = JezailApp.appContext): Map<String, Any?> {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val an = cm.activeNetwork
         val nc = cm.getNetworkCapabilities(an)
         val lp = cm.getLinkProperties(an)
-        val wi =
-            if (SDK_INT >= Build.VERSION_CODES.S) nc?.transportInfo as? WifiInfo else @Suppress(
-                "DEPRECATION"
-            ) wm.connectionInfo
+        val wi = if (SDK_INT >= Build.VERSION_CODES.S) {
+            nc?.transportInfo as? WifiInfo
+        } else {
+            @Suppress("DEPRECATION") wm.connectionInfo
+        }
         val ifRes = runCatching { Shell.cmd("ip addr show").exec() }.getOrNull()
         val rtRes = runCatching { Shell.cmd("ip route show").exec() }.getOrNull()
         val arpRes = runCatching { Shell.cmd("cat /proc/net/arp").exec() }.getOrNull()
-        return mapOf(
-            "activeConnection" to mapOf(
-                "hasInternet" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    ?: false),
+
+        return buildMap {
+            put("activeConnection", mapOf(
+                "hasInternet" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false),
                 "hasWifi" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false),
-                "hasCellular" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                    ?: false),
-                "hasEthernet" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-                    ?: false),
-                "validated" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                    ?: false)
-            ),
-            "wifi" to mapOf(
+                "hasCellular" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ?: false),
+                "hasEthernet" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ?: false),
+                "validated" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ?: false)
+            ))
+            put("wifi", mapOf(
                 "ssid" to wi?.ssid?.removeSurrounding("\""),
                 "bssid" to wi?.bssid?.takeIf { it != "02:00:00:00:00:00" },
-                "ipAddress" to if (SDK_INT >= Build.VERSION_CODES.S) lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress else @Suppress(
-                    "DEPRECATION"
-                ) wi?.ipAddress?.let { intToIp(it) },
+                "ipAddress" to if (SDK_INT >= Build.VERSION_CODES.S)
+                    lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress
+                else @Suppress("DEPRECATION")
+                wi?.ipAddress?.let { intToIp(it) },
                 "macAddress" to wi?.macAddress?.takeIf { it != "02:00:00:00:00:00" },
                 "networkId" to wi?.networkId,
                 "rssi" to wi?.rssi,
@@ -351,8 +352,8 @@ object DeviceManager {
                 "frequency" to wi?.frequency,
                 "txLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.txLinkSpeedMbps else null,
                 "rxLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.rxLinkSpeedMbps else null
-            ),
-            "dhcp" to if (SDK_INT >= Build.VERSION_CODES.S) {
+            ))
+            put("dhcp", if (SDK_INT >= Build.VERSION_CODES.S) {
                 mapOf(
                     "ipAddress" to lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress,
                     "gateway" to lp?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress,
@@ -371,27 +372,31 @@ object DeviceManager {
                     "serverAddress" to intToIp(di.serverAddress),
                     "leaseDuration" to di.leaseDuration
                 )
-            },
-            "linkProperties" to mapOf(
+            })
+            put("linkProperties", mapOf(
                 "interfaceName" to lp?.interfaceName,
                 "linkAddresses" to lp?.linkAddresses?.map { it.toString() },
                 "routes" to lp?.routes?.map { it.toString() },
                 "dnsServers" to lp?.dnsServers?.map { it.hostAddress },
                 "domains" to lp?.domains
-            ),
-            "cellular" to mapOf(
-                "networkOperator" to tm.networkOperatorName,
-                "networkType" to if (SDK_INT >= Build.VERSION_CODES.R) tm.dataNetworkType else tm.networkType,
-                "phoneType" to tm.phoneType,
-                "simState" to tm.simState,
-                "isNetworkRoaming" to tm.isNetworkRoaming,
-                "isDataEnabled" to if (SDK_INT >= Build.VERSION_CODES.O) tm.isDataEnabled else null
-            ),
-            "interfaces" to (ifRes?.takeIf { it.isSuccess }?.out ?: emptyList()),
-            "routes" to (rtRes?.takeIf { it.isSuccess }?.out ?: emptyList()),
-            "arp" to (arpRes?.takeIf { it.isSuccess }?.out ?: emptyList())
-        )
+            ))
+            if (checkSelfPermission(context, READ_PHONE_STATE) == PERMISSION_GRANTED) {
+                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                put("cellular", mapOf(
+                    "networkOperator" to tm.networkOperatorName,
+                    "networkType" to if (SDK_INT >= Build.VERSION_CODES.R) tm.dataNetworkType else tm.networkType,
+                    "phoneType" to tm.phoneType,
+                    "simState" to tm.simState,
+                    "isNetworkRoaming" to tm.isNetworkRoaming,
+                    "isDataEnabled" to if (SDK_INT >= Build.VERSION_CODES.O) tm.isDataEnabled else null
+                ))
+            }
+            put("interfaces", ifRes?.takeIf { it.isSuccess }?.out ?: emptyList<Any>())
+            put("routes", rtRes?.takeIf { it.isSuccess }?.out ?: emptyList<Any>())
+            put("arp", arpRes?.takeIf { it.isSuccess }?.out ?: emptyList<Any>())
+        }
     }
+
 
     private fun intToIp(ip: Int): String =
         "${ip and 0xFF}.${ip shr 8 and 0xFF}.${ip shr 16 and 0xFF}.${ip shr 24 and 0xFF}"

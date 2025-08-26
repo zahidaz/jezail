@@ -1,6 +1,7 @@
 package com.azzahid.jezail.features.permissions
 
 import android.Manifest.permission.POST_NOTIFICATIONS
+import android.Manifest.permission.READ_PHONE_STATE
 import android.content.Context
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Build.VERSION.SDK_INT
@@ -20,6 +21,12 @@ object PermissionManager {
                     isRequired = true
                 )
             )
+
+            put(READ_PHONE_STATE,PermissionInfo(
+                displayName = "Read Phone State",
+                description = "Required for accessing cellular network status",
+                isRequired = true
+            ))
         }
     }
 
