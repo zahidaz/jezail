@@ -12,8 +12,13 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.NetworkInterface
+import java.net.URL
 
 fun RoutingNode.toFlattenedList(): List<RoutingNode> {
     val result = mutableListOf<RoutingNode>()
@@ -69,4 +74,19 @@ fun getLocalIpAddress(): String = try {
         ?.hostAddress ?: "127.0.0.1"
 } catch (_: Exception) {
     "127.0.0.1"
+}
+
+fun downloadFile(url: String, to: File) {
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 30000
+        readTimeout = 60000
+    }
+    if (connection.responseCode != 200) throw IOException("Download failed: ${connection.responseCode}")
+    connection.inputStream.use { input ->
+        FileOutputStream(
+            to, false
+        ).use { input.copyTo(it) }
+    }
+    connection.disconnect()
 }

@@ -6,9 +6,12 @@ import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.nio.ExtendedFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.tukaani.xz.XZInputStream
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.URLConnection
 import java.util.zip.ZipEntry
@@ -204,3 +207,14 @@ fun ExtendedFile.moveTo(destination: File): Boolean = runCatching {
     }
     true
 }.getOrElse { false }
+
+fun extractXZFile(inputFile: File, outputFile: File) {
+    require(inputFile.exists())
+    if (outputFile.exists()) outputFile.delete()
+    outputFile.parentFile?.mkdirs()
+    BufferedInputStream(FileInputStream(inputFile)).use { bis ->
+        XZInputStream(bis).use { xzIn ->
+            FileOutputStream(outputFile).use { out -> xzIn.copyTo(out) }
+        }
+    }
+}

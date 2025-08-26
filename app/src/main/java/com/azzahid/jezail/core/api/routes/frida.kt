@@ -12,17 +12,6 @@ fun Route.fridaRoutes() {
     route("/frida", {
         description = "Frida dynamic instrumentation toolkit management endpoints"
     }) {
-        get("/start", {
-            description = "Start the Frida server"
-        }) {
-            call.respond(Success(data = FridaManager.start()))
-        }
-
-        get("/stop", {
-            description = "Stop the Frida server"
-        }) {
-            call.respond(Success(data = FridaManager.stop()))
-        }
 
         get("/status", {
             description = "Get the current status of the Frida server"
@@ -36,16 +25,33 @@ fun Route.fridaRoutes() {
             call.respond(Success(data = FridaManager.getInfo()))
         }
 
+        get("/start", {
+            description = "Start the Frida server"
+        }) {
+            FridaManager.start()
+            call.respond(Success(data = "Frida server started"))
+        }
+
+        get("/stop", {
+            description = "Stop the Frida server"
+        }) {
+            FridaManager.stop()
+            call.respond(Success(data = "Frida server stopped"))
+        }
+
+
         get("/install", {
             description = "Install Frida on the device"
         }) {
-            call.respond(Success(data = FridaManager.install(JezailApp.appContext)))
+            FridaManager.install(JezailApp.appContext)
+            call.respond(Success(data = FridaManager.getCurrentVersion()))
         }
 
         get("/update", {
             description = "Update Frida to the latest version"
         }) {
-            call.respond(Success(data = FridaManager.updateToLatest(JezailApp.appContext)))
+            FridaManager.updateToLatest(JezailApp.appContext)
+            call.respond(Success(data = FridaManager.getCurrentVersion()))
         }
     }
 }
