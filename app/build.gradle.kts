@@ -1,4 +1,7 @@
 import de.undercouch.gradle.tasks.download.Download
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+val jezailUiDownloadUrl = "https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -18,7 +21,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -30,23 +32,28 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
+
     buildFeatures {
         compose = true
     }
+
     lint {
         disable.add("QueryAllPackagesPermission")
     }
 
     packaging {
         resources {
-            // "io.github.smiley4:ktor-openapi:5.2.0" requires to exclude for build to successes
             excludes += arrayOf(
                 "META-INF/ASL-2.0.txt",
                 "draftv4/schema",
@@ -61,8 +68,14 @@ android {
                 "META-INF/LGPL-2.1.txt",
                 "META-INF/LGPL-2.1",
                 "META-INF/LGPL-3.0",
-                "draftv3/schema",
+                "draftv3/schema"
             )
+        }
+    }
+
+    sourceSets {
+        getByName("main") {
+            assets.srcDirs("${layout.buildDirectory.get()}/generated/assets")
         }
     }
 }
@@ -80,7 +93,6 @@ dependencies {
     implementation(libs.libsu.core)
     implementation(libs.service)
     implementation(libs.libsu.nio)
-
     implementation(libs.xz)
 
     implementation(libs.ktor.server.cio)
@@ -91,17 +103,12 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.server.cors)
-
-//    implementation(libs.ktor.server.locations)
-
-
     implementation(libs.gson)
 
     implementation("io.github.smiley4:ktor-openapi:5.2.0") {
         exclude(group = "javax.validation", module = "validation-api")
     }
     implementation(libs.ktor.swagger.ui)
-
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit.v120)
@@ -110,31 +117,31 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
 }
 
 val downloadWebAssets = tasks.register<Download>("downloadWebAssets") {
-    src("https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip")
+    group = "assets"
+    description = "Downloads latest web assets from GitHub releases"
+    src(jezailUiDownloadUrl)
     dest(layout.buildDirectory.file("downloads/web-assets.zip"))
     onlyIfModified(true)
     useETag(true)
 }
 
 val extractWebAssets = tasks.register<Copy>("extractWebAssets") {
+    group = "assets"
+    description = "Extracts web assets to build directory"
     dependsOn(downloadWebAssets)
     from(zipTree(downloadWebAssets.get().dest))
     into(layout.buildDirectory.dir("generated/assets/web"))
 }
 
-android {
-    sourceSets {
-        getByName("main") {
-            assets.srcDirs("${layout.buildDirectory.get()}/generated/assets")
-        }
+afterEvaluate {
+    tasks.named("mergeDebugAssets") {
+        dependsOn(extractWebAssets)
+    }
+
+    tasks.named("mergeReleaseAssets") {
+        dependsOn(extractWebAssets)
     }
 }
-
-tasks.withType<Task>().matching { it.name.contains("mergeAssets") }.configureEach {
-    dependsOn(extractWebAssets)
-}
-
