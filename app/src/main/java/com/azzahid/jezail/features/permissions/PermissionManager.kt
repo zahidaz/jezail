@@ -1,56 +1,49 @@
 package com.azzahid.jezail.features.permissions
 
-import android.Manifest
+import android.Manifest.permission.POST_NOTIFICATIONS
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.core.content.ContextCompat
-import com.azzahid.jezail.core.data.models.DangerousPermissions
+import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES.TIRAMISU
+import androidx.core.content.ContextCompat.checkSelfPermission
+import com.azzahid.jezail.core.data.models.PermissionInfo
 import com.azzahid.jezail.core.data.models.PermissionStatus
 
 object PermissionManager {
-    
-    fun getRequiredPermissions(): List<String> {
-        return buildList {
-            // Add permissions that are dangerous and need to be requested at runtime
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            
-            // To add more permissions:
-            // 1. Add the permission to AndroidManifest.xml
-            // 2. Add its info to DangerousPermissions.PERMISSIONS map
-            // 3. Add it here if it requires runtime permission
-            // Example:
-            // add(Manifest.permission.EXAMPLE_PERMISSION)
+
+    private val requiredPermissions = buildMap {
+        if (SDK_INT >= TIRAMISU) {
+            put(
+                POST_NOTIFICATIONS, PermissionInfo(
+                    displayName = "Notifications",
+                    description = "Required for foreground service notifications and system alerts",
+                    isRequired = true
+                )
+            )
         }
     }
-    
+
     fun checkPermissionStatus(context: Context, permission: String): PermissionStatus {
-        val isGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-        val permissionInfo = DangerousPermissions.PERMISSIONS[permission]
-        
+        require(requiredPermissions.containsKey(permission)) {
+            "Unknown permission: $permission"
+        }
+        val info = requiredPermissions[permission]!!
         return PermissionStatus(
-            permission = permission,
-            isGranted = isGranted,
             isDangerous = true,
-            displayName = permissionInfo?.displayName ?: permission.substringAfterLast('.'),
-            description = permissionInfo?.description ?: "Required for app functionality",
-            isRequired = permissionInfo?.isRequired ?: true
+            permission = permission,
+            displayName = info.displayName,
+            description = info.description,
+            isRequired = info.isRequired,
+            isGranted = checkSelfPermission(context, permission) == PERMISSION_GRANTED,
         )
     }
-    
-    fun getAllPermissionStatuses(context: Context): List<PermissionStatus> {
-        return getRequiredPermissions().map { permission ->
-            checkPermissionStatus(context, permission)
-        }
-    }
-    
-    fun hasAllRequiredPermissions(context: Context): Boolean {
-        return getAllPermissionStatuses(context).all { it.isGranted || !it.isRequired }
-    }
-    
-    fun getMissingPermissions(context: Context): List<PermissionStatus> {
-        return getAllPermissionStatuses(context).filter { !it.isGranted && it.isRequired }
-    }
+
+    fun getAllPermissionStatuses(context: Context) =
+        requiredPermissions.keys.map { checkPermissionStatus(context, it) }
+
+    fun hasAllRequiredPermissions(context: Context) =
+        getAllPermissionStatuses(context).all { it.isGranted || !it.isRequired }
+
+    fun getMissingPermissions(context: Context) =
+        getAllPermissionStatuses(context).filter { !it.isGranted && it.isRequired }
 }

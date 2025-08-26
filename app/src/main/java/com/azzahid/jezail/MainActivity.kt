@@ -12,15 +12,14 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.net.toUri
 import com.azzahid.jezail.features.managers.AdbManager
 import com.azzahid.jezail.core.services.HttpServerService
-import com.azzahid.jezail.ui.screens.PermissionsScreen
-import com.azzahid.jezail.ui.screens.ServerControlScreen
+import com.azzahid.jezail.ui.screens.MainScreen
 import com.azzahid.jezail.ui.theme.AppTheme
 import com.topjohnwu.superuser.Shell
 
@@ -34,7 +33,6 @@ class MainActivity : ComponentActivity() {
     private var isRooted by mutableStateOf(false)
     private var isAdbRunning by mutableStateOf(false)
     private var adbVersion by mutableStateOf("unknown")
-    private var showPermissionsScreen by mutableStateOf(false)
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -55,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         Log.i(TAG, "Application starting")
 
         isRooted = try {
@@ -66,26 +65,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                if (showPermissionsScreen) {
-                    PermissionsScreen(
-                        onNavigateBack = { showPermissionsScreen = false }
-                    )
-                } else {
-                    ServerControlScreen(
-                        isServerRunning = isServerRunning,
-                        deviceIpAddress = deviceIpAddress,
-                        serverPort = serverPort,
-                        isRooted = isRooted,
-                        isAdbRunning = isAdbRunning,
-                        adbVersion = adbVersion,
-                        onStartServer = { startServer() },
-                        onStopServer = { stopServer() },
-                        onStartAdb = { startAdb() },
-                        onStopAdb = { stopAdb() },
-                        onOpenWebUI = { openWebUI() },
-                        onOpenPermissions = { showPermissionsScreen = true }
-                    )
-                }
+                MainScreen(
+                    isServerRunning = isServerRunning,
+                    deviceIpAddress = deviceIpAddress,
+                    serverPort = serverPort,
+                    isRooted = isRooted,
+                    isAdbRunning = isAdbRunning,
+                    onStartServer = { startServer() },
+                    onStopServer = { stopServer() },
+                    onStartAdb = { startAdb() },
+                    onStopAdb = { stopAdb() },
+                    onOpenPermissions = { },
+                    onPortChange = { newPort -> changeServerPort(newPort) }
+                )
             }
         }
 
@@ -196,11 +188,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openWebUI() {
-        val url = "http://$deviceIpAddress:$serverPort"
-        Intent(Intent.ACTION_VIEW, url.toUri()).also {
-            startActivity(it)
+    private fun changeServerPort(newPort: Int) {
+        if (isServerRunning) {
+            Log.w(TAG, "Cannot change port while server is running")
+            return
         }
+        Log.d(TAG, "Changing server port from $serverPort to $newPort")
+        serverPort = newPort
     }
 
     private fun delayedStatusUpdate(delayMillis: Long = 500) {
