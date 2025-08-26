@@ -1,6 +1,6 @@
 package com.azzahid.jezail.core.api.routes
 
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.api.Success
 import com.azzahid.jezail.features.managers.FileManager
 import com.azzahid.jezail.features.managers.zipDirectory
@@ -108,7 +108,7 @@ fun Route.filesRoutes() {
 
             val uuid = UUID.randomUUID().toString()
             val downloadDir =
-                File(MyApplication.appContext.getExternalFilesDir(null), "download/$uuid")
+                File(JezailApp.appContext.getExternalFilesDir(null), "download/$uuid")
             downloadDir.mkdirs()
 
             srcPaths.forEach { srcPath ->

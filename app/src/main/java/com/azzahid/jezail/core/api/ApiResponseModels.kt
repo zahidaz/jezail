@@ -1,7 +1,7 @@
 package com.azzahid.jezail.core.api
 
 import android.content.Context
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.fromFileExtension
@@ -34,7 +34,7 @@ data class Failure(
 
 class AssetsResourceProvider(
     private val basePath: String = "",
-    private val context: Context = MyApplication.appContext,
+    private val context: Context = JezailApp.appContext,
 ) {
     fun getResource(path: String): AssetResource? = runCatching {
         val fullPath = if (basePath.isEmpty()) path else "$basePath/$path"

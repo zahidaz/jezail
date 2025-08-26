@@ -7,7 +7,7 @@ import android.util.Log
 import com.azzahid.jezail.features.RootFSService
 import com.topjohnwu.superuser.Shell
 
-class MyApplication : Application() {
+class JezailApp : Application() {
 
     companion object {
         lateinit var appContext: Context
@@ -27,7 +27,7 @@ class MyApplication : Application() {
         Shell.getShell { shell ->
             if (shell.isRoot) {
                 Log.d("Root", "Root access granted")
-                RootFSService.bind(this@MyApplication)
+                RootFSService.bind(this@JezailApp)
             } else {
                 Log.e("Root", "Root access denied")
             }

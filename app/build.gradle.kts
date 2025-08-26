@@ -1,7 +1,8 @@
 import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-val jezailUiDownloadUrl = "https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip"
+val jezailUiDownloadUrl =
+    "https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip"
 
 plugins {
     alias(libs.plugins.android.application)

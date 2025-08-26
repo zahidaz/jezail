@@ -3,7 +3,7 @@ package com.azzahid.jezail.features.managers
 import android.content.Context
 import android.text.format.Formatter
 import android.webkit.MimeTypeMap
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.features.withRootFS
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.nio.ExtendedFile
@@ -53,7 +53,7 @@ object FileManager {
             put("isFile", file.isFile)
             put("isHidden", file.isHidden)
             put("size", file.takeIf { it.isFile }?.length())
-            put("sizeFormatted", file.formattedSize(MyApplication.appContext))
+            put("sizeFormatted", file.formattedSize(JezailApp.appContext))
             put("lastModified", file.lastModified())
             put("lastModifiedFormatted", dateFormat.format(Date(file.lastModified())))
             put("readable", file.canRead())

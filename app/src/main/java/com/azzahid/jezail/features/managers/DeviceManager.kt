@@ -19,7 +19,7 @@ import android.os.Build.VERSION_CODES.N_MR1
 import android.os.Environment
 import android.provider.Settings
 import android.telephony.TelephonyManager
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import com.topjohnwu.superuser.Shell
 import java.io.File
 
@@ -53,7 +53,7 @@ object DeviceManager {
         )
     }
 
-    fun getUserDefinedDeviceName(contentResolver: ContentResolver = MyApplication.Companion.appContext.contentResolver): String? {
+    fun getUserDefinedDeviceName(contentResolver: ContentResolver = JezailApp.Companion.appContext.contentResolver): String? {
         return if (SDK_INT >= N_MR1) {
             Settings.Global.getString(contentResolver, Settings.Global.DEVICE_NAME)
         } else {
@@ -105,7 +105,7 @@ object DeviceManager {
         }
     }
 
-    fun getClipboard(context: Context = MyApplication.Companion.appContext): String? {
+    fun getClipboard(context: Context = JezailApp.Companion.appContext): String? {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         return clipboard.primaryClip?.getItemAt(0)?.text?.toString()
     }
@@ -113,13 +113,13 @@ object DeviceManager {
     fun setClipboard(
         label: String,
         text: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
     }
 
-    fun clearClipboard(context: Context = MyApplication.Companion.appContext) {
+    fun clearClipboard(context: Context = JezailApp.Companion.appContext) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (SDK_INT >= Build.VERSION_CODES.P) {
             clipboard.clearPrimaryClip()
@@ -128,12 +128,12 @@ object DeviceManager {
         }
     }
 
-    fun hasPrimaryClip(context: Context = MyApplication.Companion.appContext): Boolean {
+    fun hasPrimaryClip(context: Context = JezailApp.Companion.appContext): Boolean {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         return clipboard.hasPrimaryClip()
     }
 
-    fun getBatteryInfo(context: Context = MyApplication.Companion.appContext): Map<String, Any?> {
+    fun getBatteryInfo(context: Context = JezailApp.Companion.appContext): Map<String, Any?> {
         val batteryIntent = context.registerReceiver(
             null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
@@ -179,7 +179,7 @@ object DeviceManager {
 
     fun getRamInfo(): Map<String, Any?> {
         val activityManager =
-            MyApplication.Companion.appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            JezailApp.Companion.appContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val memInfo = ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memInfo)
 
@@ -312,7 +312,7 @@ object DeviceManager {
     }
 
     @SuppressLint("MissingPermission", "HardwareIds")
-    fun getNetworkInfo(context: Context = MyApplication.Companion.appContext): Map<String, Any?> {
+    fun getNetworkInfo(context: Context = JezailApp.Companion.appContext): Map<String, Any?> {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -464,7 +464,7 @@ object DeviceManager {
 
     fun captureScreenshot(): File? {
         val f = "screenshot_${System.currentTimeMillis()}.png"
-        val destination = File(MyApplication.Companion.appContext.cacheDir, f)
+        val destination = File(JezailApp.Companion.appContext.cacheDir, f)
         val res = Shell.cmd("screencap -p ${destination.absolutePath}").exec()
         return if (res.isSuccess) destination else null
     }

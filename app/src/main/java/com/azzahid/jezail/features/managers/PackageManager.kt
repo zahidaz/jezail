@@ -1,12 +1,11 @@
 package com.azzahid.jezail.features.managers
 
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.utils.DrawableEncoder
 import com.azzahid.jezail.features.SimplePackageInfo
 import com.azzahid.jezail.features.toSimplePackageInfo
@@ -20,14 +19,14 @@ import java.security.MessageDigest
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-object MyPackageManager {
+object PackageManager {
 
     private const val TAG = "AppManager"
     private val drawableEncoder = DrawableEncoder()
     private val gson = Gson()
 
     fun getInstalledApps(
-        context: Context = MyApplication.Companion.appContext,
+        context: Context = JezailApp.Companion.appContext,
         includeSystem: Boolean = true,
     ): List<SimplePackageInfo> {
         val pm = context.packageManager
@@ -43,19 +42,19 @@ object MyPackageManager {
             }
     }
 
-    fun getUserInstalledApps(context: Context = MyApplication.Companion.appContext) =
+    fun getUserInstalledApps(context: Context = JezailApp.Companion.appContext) =
         getInstalledApps(context, includeSystem = false)
 
-    fun getSystemInstalledApps(context: Context = MyApplication.Companion.appContext) =
+    fun getSystemInstalledApps(context: Context = JezailApp.Companion.appContext) =
         getInstalledApps(context, includeSystem = true)
 
-    fun getAllInstalledApps(context: Context = MyApplication.Companion.appContext): List<SimplePackageInfo> =
+    fun getAllInstalledApps(context: Context = JezailApp.Companion.appContext): List<SimplePackageInfo> =
         getInstalledApps(context, includeSystem = false) + getInstalledApps(
             context, includeSystem = true
         )
 
     fun getAppDetails(
-        packageName: String, context: Context = MyApplication.Companion.appContext
+        packageName: String, context: Context = JezailApp.Companion.appContext
     ): JsonElement {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -78,7 +77,7 @@ object MyPackageManager {
 
     fun getAppSimpleDetails(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): SimplePackageInfo? {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -95,7 +94,7 @@ object MyPackageManager {
     fun tryLaunchApp(
         packageName: String,
         activityName: String? = null,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(activityName?.isNotBlank() != false) { "Activity name cannot be blank" }
@@ -122,8 +121,7 @@ object MyPackageManager {
     }
 
 
-
-    fun tryStopApp(packageName: String, context: Context = MyApplication.Companion.appContext) {
+    fun tryStopApp(packageName: String, context: Context = JezailApp.Companion.appContext) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
         val pm = context.packageManager
@@ -143,7 +141,7 @@ object MyPackageManager {
 
     fun tryUninstallApp(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(packageName != context.packageName) { "Cannot uninstall self '${context.packageName}'" }
@@ -191,7 +189,7 @@ object MyPackageManager {
     fun grantPermission(
         packageName: String,
         permission: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(permission.isNotBlank()) { "Permission cannot be blank" }
@@ -218,7 +216,7 @@ object MyPackageManager {
     fun revokePermission(
         packageName: String,
         permission: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(permission.isNotBlank()) { "Permission cannot be blank" }
@@ -246,7 +244,7 @@ object MyPackageManager {
 
     fun getGrantedPermissions(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): List<String> {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         val packageInfo: PackageInfo = runCatching {
@@ -263,7 +261,7 @@ object MyPackageManager {
 
     fun getAllPermissions(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): List<String> {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -278,7 +276,7 @@ object MyPackageManager {
 
     fun isAppRunning(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): Boolean {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -296,7 +294,7 @@ object MyPackageManager {
 
     fun getProcessInfo(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): Map<String, Any> {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -341,7 +339,7 @@ object MyPackageManager {
         return result
     }
 
-    fun clearAppData(packageName: String, context: Context = MyApplication.Companion.appContext) {
+    fun clearAppData(packageName: String, context: Context = JezailApp.Companion.appContext) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(packageName != context.packageName) { "Cannot clear data for self '${context.packageName}'" }
 
@@ -359,7 +357,7 @@ object MyPackageManager {
         }
     }
 
-    fun clearAppCache(packageName: String, context: Context = MyApplication.Companion.appContext) {
+    fun clearAppCache(packageName: String, context: Context = JezailApp.Companion.appContext) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
         runCatching {
@@ -382,7 +380,7 @@ object MyPackageManager {
 
     fun getAppSignatures(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): Map<String, Any> {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 
@@ -469,7 +467,7 @@ object MyPackageManager {
 
     fun isAppDebuggable(
         packageName: String,
-        context: Context = MyApplication.Companion.appContext
+        context: Context = JezailApp.Companion.appContext
     ): Boolean {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
 

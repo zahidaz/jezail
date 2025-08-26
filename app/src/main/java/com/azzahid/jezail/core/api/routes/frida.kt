@@ -1,6 +1,6 @@
 package com.azzahid.jezail.core.api.routes
 
-import com.azzahid.jezail.MyApplication
+import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.api.Success
 import com.azzahid.jezail.features.managers.FridaManager
 import io.github.smiley4.ktoropenapi.get
@@ -39,13 +39,13 @@ fun Route.fridaRoutes() {
         get("/install", {
             description = "Install Frida on the device"
         }) {
-            call.respond(Success(data = FridaManager.install(MyApplication.appContext)))
+            call.respond(Success(data = FridaManager.install(JezailApp.appContext)))
         }
 
         get("/update", {
             description = "Update Frida to the latest version"
         }) {
-            call.respond(Success(data = FridaManager.updateToLatest(MyApplication.appContext)))
+            call.respond(Success(data = FridaManager.updateToLatest(JezailApp.appContext)))
         }
     }
 }
