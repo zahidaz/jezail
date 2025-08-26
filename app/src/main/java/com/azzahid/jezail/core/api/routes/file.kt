@@ -22,7 +22,7 @@ import java.io.File
 import java.util.UUID
 
 fun Route.filesRoutes() {
-    route("/file", {
+    route("/files", {
         description = "File system management endpoints"
     }) {
         get("/info", {
