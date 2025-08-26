@@ -1,4 +1,4 @@
-package com.azzahid.jezail.core.api
+package com.azzahid.jezail.core.data.models
 
 import android.content.Context
 import com.azzahid.jezail.JezailApp

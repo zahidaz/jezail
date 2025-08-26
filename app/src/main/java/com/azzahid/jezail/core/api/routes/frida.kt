@@ -1,7 +1,7 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
-import com.azzahid.jezail.core.api.Success
+import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.FridaManager
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.route

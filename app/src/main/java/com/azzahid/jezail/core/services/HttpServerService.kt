@@ -1,11 +1,11 @@
-package com.azzahid.jezail.features.server
+package com.azzahid.jezail.core.services
 
+import android.R
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.azzahid.jezail.MainActivity
 import com.azzahid.jezail.core.api.buildServer
-import com.azzahid.jezail.core.api.getLocalIpAddress
+import com.azzahid.jezail.core.utils.getLocalIpAddress
 
 class HttpServerService : Service() {
 
@@ -87,7 +87,7 @@ class HttpServerService : Service() {
                 setSound(null, null)
                 enableVibration(false)
             }
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                 .createNotificationChannel(channel)
         }
     }
@@ -115,22 +115,22 @@ class HttpServerService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Jezail Server")
             .setContentText(statusText)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_dialog_info)
             .setColor(
                 ContextCompat.getColor(
                     this,
-                    if (isServerRunning) android.R.color.holo_green_dark else android.R.color.holo_red_dark
+                    if (isServerRunning) R.color.holo_green_dark else R.color.holo_red_dark
                 )
             )
             .setContentIntent(mainPendingIntent)
             .setOngoing(true)
             .addAction(
-                android.R.drawable.ic_media_pause,
+                R.drawable.ic_media_pause,
                 "Stop",
                 pendingServiceIntent(ACTION_STOP_SERVER, 1)
             )
             .addAction(
-                android.R.drawable.ic_popup_sync,
+                R.drawable.ic_popup_sync,
                 "Restart",
                 pendingServiceIntent(ACTION_START_SERVER, 2)
             )
@@ -142,7 +142,7 @@ class HttpServerService : Service() {
     }
 
     private fun updateNotification() {
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .notify(NOTIFICATION_ID, createNotification(DEFAULT_PORT))
     }
 

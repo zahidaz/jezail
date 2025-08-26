@@ -1,4 +1,4 @@
-package com.azzahid.jezail.core.api
+package com.azzahid.jezail.core.utils
 
 import com.google.gson.Gson
 import io.ktor.server.routing.RoutingNode

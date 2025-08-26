@@ -1,4 +1,4 @@
-package com.azzahid.jezail.features
+package com.azzahid.jezail.core.data.models
 
 import android.app.ActivityManager
 import android.content.Context

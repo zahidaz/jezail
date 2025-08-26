@@ -7,8 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.utils.DrawableEncoder
-import com.azzahid.jezail.features.SimplePackageInfo
-import com.azzahid.jezail.features.toSimplePackageInfo
+import com.azzahid.jezail.core.data.models.SimplePackageInfo
+import com.azzahid.jezail.core.data.models.toSimplePackageInfo
 import com.google.gson.Gson
 import com.topjohnwu.superuser.Shell
 import kotlinx.serialization.json.Json

@@ -1,10 +1,11 @@
-package com.azzahid.jezail.features.server
+package com.azzahid.jezail.core.receivers
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.azzahid.jezail.core.services.HttpServerService
 
 class BootReceiver : BroadcastReceiver() {
 
@@ -17,8 +18,8 @@ class BootReceiver : BroadcastReceiver() {
             Log.i(TAG, "Boot completed, auto-starting HTTP server service")
 
             val serviceIntent = Intent(context, HttpServerService::class.java).apply {
-                action = HttpServerService.ACTION_START_SERVER
-                putExtra(HttpServerService.EXTRA_PORT, HttpServerService.DEFAULT_PORT)
+                action = HttpServerService.Companion.ACTION_START_SERVER
+                putExtra(HttpServerService.Companion.EXTRA_PORT, HttpServerService.Companion.DEFAULT_PORT)
             }
 
             try {

@@ -18,7 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import com.azzahid.jezail.features.managers.AdbManager
-import com.azzahid.jezail.features.server.HttpServerService
+import com.azzahid.jezail.core.services.HttpServerService
 import com.azzahid.jezail.ui.screens.ServerControlScreen
 import com.azzahid.jezail.ui.theme.AppTheme
 import com.topjohnwu.superuser.Shell

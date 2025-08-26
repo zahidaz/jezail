@@ -1,4 +1,4 @@
-package com.azzahid.jezail.features
+package com.azzahid.jezail.core.services
 
 import android.content.ComponentName
 import android.content.Context

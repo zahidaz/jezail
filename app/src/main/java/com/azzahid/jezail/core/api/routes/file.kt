@@ -1,10 +1,10 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
-import com.azzahid.jezail.core.api.Success
+import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.FileManager
-import com.azzahid.jezail.features.managers.zipDirectory
-import com.azzahid.jezail.features.withRootFSFile
+import com.azzahid.jezail.core.services.withRootFSFile
+import com.azzahid.jezail.core.utils.zipDirectory
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post

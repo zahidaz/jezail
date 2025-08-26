@@ -1,8 +1,8 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
-import com.azzahid.jezail.core.api.Failure
-import com.azzahid.jezail.core.api.Success
+import com.azzahid.jezail.core.data.models.Failure
+import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.PackageManager
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get

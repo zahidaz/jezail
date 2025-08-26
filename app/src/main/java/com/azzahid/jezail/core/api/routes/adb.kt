@@ -1,6 +1,6 @@
 package com.azzahid.jezail.core.api.routes
 
-import com.azzahid.jezail.core.api.Success
+import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.AdbManager
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
