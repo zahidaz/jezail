@@ -100,24 +100,28 @@ object MyPackageManager {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
         require(activityName?.isNotBlank() != false) { "Activity name cannot be blank" }
 
-        val pm = context.packageManager
-        val intent = if (activityName != null) {
-            Intent().setClassName(packageName, activityName)
-        } else {
-            pm.getLaunchIntentForPackage(packageName)
-        }
-
-        require(intent != null) {
-            "Failed to launch app '$packageName'${activityName?.let { " with activity '$it'" } ?: ""}"
-        }
-
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching {
-            context.startActivity(intent)
+            context.packageManager.getApplicationInfo(packageName, 0)
         }.getOrElse {
-            error("Failed to launch app '$packageName'${activityName?.let { " with activity '$it'" } ?: ""}")
+            error("Package '$packageName' not found")
+        }
+
+        val shellCommand = if (activityName != null) {
+            "am start -n $packageName/$activityName"
+        } else {
+            "monkey -p $packageName -c android.intent.category.LAUNCHER 1"
+        }
+
+        val result = Shell.cmd(shellCommand).exec()
+
+        require(result.isSuccess) {
+            "Failed to launch app '$packageName'${activityName?.let { " with activity '$it'" } ?: ""}: ${
+                result.err.joinToString("\n").ifEmpty { "Unknown error" }
+            }"
         }
     }
+
+
 
     fun tryStopApp(packageName: String, context: Context = MyApplication.Companion.appContext) {
         require(packageName.isNotBlank()) { "Package name cannot be blank" }
