@@ -155,7 +155,7 @@ fun Application.configureServer() {
             )
         }
         status(NotFound) { call, status ->
-            call.respond(status, Failure(error = "Not Found"))
+            call.respond(status, Failure(error = "404"))
         }
     }
 
