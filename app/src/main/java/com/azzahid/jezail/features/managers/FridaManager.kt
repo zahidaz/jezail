@@ -6,6 +6,7 @@ import com.azzahid.jezail.core.services.withRootFSFile
 import com.azzahid.jezail.core.utils.downloadFile
 import com.azzahid.jezail.core.utils.extractXZFile
 import com.topjohnwu.superuser.Shell
+import com.topjohnwu.superuser.nio.ExtendedFile
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -83,7 +84,6 @@ object FridaManager {
 
         xz.delete()
         downloaded.delete()
-        fridaBinaryPath.setExecutable(true)
     }
 
     suspend fun install(context: Context) {
@@ -97,10 +97,24 @@ object FridaManager {
     fun start(port: Int? = null) {
         require(fridaBinaryPath.exists())
         val chosenPort = port ?: FRIDA_PORT.toInt()
-        fridaBinaryPath.setExecutable(true)
-        Shell.cmd(
-            "nohup ${fridaBinaryPath.absolutePath} -l 0.0.0.0:$chosenPort >/dev/null 2>&1 &"
-        ).exec().takeIf { it.isSuccess } ?: error("Failed to start frida-server")
+        val result = Shell.cmd(
+            "chmod +x ${fridaBinaryPath.absolutePath}",
+            "nohup ${fridaBinaryPath.absolutePath} -l 0.0.0.0:$chosenPort &"
+        ).exec()
+        if (!result.isSuccess){
+            val msg = buildString {
+                appendLine(result.err.joinToString())
+                appendLine(result.out.joinToString())
+                appendLine("Failed to start Frida server")
+                appendLine("Exit code: ${result.code}")
+                appendLine("port: $chosenPort")
+                appendLine("binary: ${fridaBinaryPath.absolutePath}")
+                appendLine("exists ${fridaBinaryPath.exists()}")
+                appendLine("canExecute ${fridaBinaryPath.canExecute()}")
+                appendLine("canRead ${fridaBinaryPath.canRead()}")
+            }
+            error(msg)
+        }
     }
 
     fun stop(): Boolean {
