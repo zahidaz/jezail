@@ -1,163 +1,71 @@
-# Jezail
+# Jezail Android Pentesting Toolkit
 
-**Jezail** is an Android application that enables remote control of your rooted Android device, extraction of system and application information, and execution of dynamic penetration testing tasks. It supports environment management via a REST API and a browser-based web interface.
+Jezail is a **powerful, all-in-one Android APK** that **runs entirely on your rooted device**, providing comprehensive pentesting capabilities without needing external tools or a PC. It transforms your Android phone or tablet into a fully autonomous security testing platform with a rich set of features accessible through an embedded web UI served locally from the device.
 
-The application **requires root access** (via [`libsu`](https://github.com/topjohnwu/libsu)) for many operations.
+With Jezail, everything happens *from within Android* - no complicated setups, no dependency on external hosts, deep system access and dynamic analysis powered by a bundled REST API and an interactive Flutter-based web interface.
 
-## Quick Setup
+## Documentation Overview
 
-1. **Download the APK**  
-   Get the latest release from:  
-   [jezail Releases](https://github.com/zahidaz/jezail/releases)
+To keep this repository clean and organized, detailed documentation is separated into dedicated markdown files:
 
-2. **Install via ADB**  
-   Connect your device with ADB and install the APK:
-   ```bash
-   adb install /path/to/jezail.apk
+- [FEATURES.md](./FEATURES.md) - Complete list of core and planned capabilities  
+- [UI.md](./UI.md) - Details about the Flutter-based embedded user interface (`jezail_ui`)  
+- [ROADMAP.md](./ROADMAP.md) - Upcoming features and development goals  
+
+## Media & Tutorials
+
+Get started quickly by exploring demos and user interface previews:
+
+- YouTube Demo: TODO: [Jezail Android Pentesting Demo Video](TODO: insert link)  
+- Screenshots showing features and UI are available in the [`docs/screenshots/`](./docs/screenshots) directory  
+
+## Requirements
+
+- **Rooted Android Device:** Jezail requires the device to be rooted for full access to system features and pentesting capabilities.
+   - For rooting, [Magisk](https://github.com/topjohnwu/Magisk) is the recommended tool for modern Android devices.
+   - If using an emulator, ensure it is rooted as well. For rooting: [rootAVD](https://gitlab.com/newbit/rootAVD).
+
+- **Running on Emulator:**
+   - When running Jezail on an emulator, you must forward the emulator’s port to your host machine using ADB:
+     ```
+     adb forward tcp:8080 tcp:8080
+     ```  
+   - The web interface will then be accessible at `http://localhost:8080` instead of the device’s IP address.
+
+- **Network Access:**
+   - When running on a physical device, access the interface via `http://<device-ip>:8080/` from any device on the same network.
+
+
+## Quickstart
+
+1. Download the latest Jezail APK from the Releases  
+2. Install on your rooted Android device using:  
+   ```shell
+   adb install -g -r jezail.apk
+   ```  
+3. Launch Jezail — it automatically starts an internal HTTP server  
+4. Access the embedded web sever
+   ```shell
+   http://<device-ip>:<port>/ # for flutter webui
+   http://<device-ip>:<port>/api/json # for a complete api json
+   http://<device-ip>:<port>/api/swagger # for api swagger webui
    ```
-   For granting all required permissions upon installation:
-   ```bash
-   adb install -g -r /path/to/jezail.apk
-   ```
-If you are running the app inside emulator then you would need to run this command:
-```shell
-adb forward tcp:8080 tcp:8080
-```
 
-3. **Permissions**
-    - The app requires **notification permission** to run in the background.
-    - Additional **system permissions** (e.g., access to device information) can be enabled from system settings or during installation using ADB.
+## Get Involved
 
-4. **Run the App**  
-   Launch the app. If notification permissions are granted:
-    - The built-in HTTP server starts automatically.
-    - The app can be sent to the background and will continue running.
+Your feedback and contributions are invaluable. Get involved, report issues, or propose features.
 
-   On the main page, you’ll see a URL in the format:
-   ```
-   http://<IP>:8080/
-   ```
-   (IP may vary if the device is behind a proxy or NAT.)
+## About Jezail
 
-5. **Access Interfaces**
-    - **Web Interface:** [http://<IP>:8080/](http://<IP>:8080/)
-    - **JSON Endpoint List:** [http://<IP>:8080/api/json](http://<IP>:8080/api/json)
-    - **Swagger UI Documentation:** [http://<IP>:8080/api/swagger](http://<IP>:8080/api/swagger)
+Jezail is a traditional long-barreled rifle from Afghanistan used mainly in the 19th century. It was handmade and often decorated, featuring a long, heavy barrel that made it very accurate and powerful over long distances. Its unique curved wooden stock allowed fighters to shoot comfortably from different positions, including on horseback.
 
+The Jezail rifle was key in historic battles because it could hit targets much farther away than typical guns of that time. The Jezail Android Pentesting Toolkit takes its name from this powerful and precise weapon, reflecting its goal to provide strong, accurate, and versatile security tools that run fully on Android devices.
 
-## Use Cases
+## Disclaimer
 
-This API is designed for:
-- **Mobile App Testing**: Integration with automated testing frameworks and CI/CD pipelines
-- **Security Research**: Dynamic penetration testing and exploitation workflows
-- **Development Tools**: IDE integrations and debugging utilities
-- **Device Management**: Enterprise-level mobile device management solutions
-- **Reverse Engineering**: Runtime monitoring of Android applications
-- **Quality Assurance**: Automated device farm setup and test execution
-
-
-# Feature Overview
-
-## Core System Management
-
-### ADB (Android Debug Bridge)
-- Start/stop ADB server
-- Check ADB server status
-- Install public keys for ADB authentication
-
-### Frida Integration
-- Start/stop Frida server
-- Check Frida installation and status
-- Install or update Frida
-
-
-## Device Information & Control
-
-### Device Information
-- Build properties and system info
-- SELinux status (enforcing/permissive) toggle
-- Battery, CPU, RAM, storage stats (summary & detailed)
-- Network information
-
-### Device Control
-- Capture screenshots
-- Clipboard management (read, write, clear)
-- Simulate hardware keys: Home, Back, Menu, Recent Apps, Power, Volume
-- Send custom keycodes
-
-
-## System Monitoring
-
-### Logging
-- Access system, kernel, radio, crash, and event logs
-- Filter and limit log output
-- Clear logs
-
-### System Properties
-- Get and set system properties
-
-### Process Management
-- List running processes
-- Fetch details by PID
-- Kill processes (PID or name)
-
-
-## Application Management
-
-### Package Operations
-- List installed apps (all, user, system)
-- Get package details (basic/detailed)
-- Install APKs with options: force install, auto-grant permissions
-- Uninstall or launch apps (custom activities supported)
-- Stop running apps
-- Sandbox dumping (via file endpoints)
-
-### Application Control
-- Check if an app is running
-- Fetch process information
-- Clear app data and cache
-- Check `debuggable` flag
-- Extract app signatures
-
-### Permission Management
-- List granted/denied permissions per app
-- Grant/revoke specific permissions
-
-
-## File System Operations
-
-### File Management
-- Inspect files and directories (attributes, metadata)
-- Download and upload files
-- Read/write text files
-- Rename, move, create, or delete items
-
-### File Permissions
-- Modify Unix permissions: chmod, chown, chgrp
-
-
-## API Utilities
-
-- Status and health checks
-
-
-# Roadmap
-
-Planned features include:
-- Dynamic intent building to target exported components of other apps
-- Load/customize Frida scripts directly from the app
-- Remote input injection: type directly from browser/PC into device input fields
-- Search and dump application memory
-- Automated OWASP MAS dynamic testing from device
-- Extended 3rd-party tools management
-- Proxy and certificate management utilities
-- Ability to spoof Frida name/version
-
-
-**Disclaimer**: This project is still in its early stages of development and has not been extensively tested across a wide range of devices or Android versions. While most core features work as intended, some functions may behave inconsistently or encounter minor issues depending on the specific device environment. Users should expect experimental behavior.
-
+Jezail is currently under active development and may contain incomplete features or bugs. It is provided "as is" without any warranty of any kind, either expressed or implied. Users assume full responsibility for any risks or issues that arise from using the toolkit. Jezail is intended for use by experienced security professionals and researchers who understand the risks associated with running powerful tools on rooted Android devices.
 
 
 ## License
 
-This project is licensed under the **MIT License**
+This project is open-source under the MIT License. See [LICENSE](./LICENSE) for details.
