@@ -15,13 +15,15 @@ fun Route.adbRoutes() {
         get("/start", {
             description = "Start the ADB server"
         }) {
-            call.respond(Success(data = AdbManager.start()))
+            AdbManager.start()
+            call.respond(Success(data = "ADB server started"))
         }
 
         get("/stop", {
             description = "Stop the ADB server"
         }) {
-            call.respond(Success(data = AdbManager.stop()))
+            AdbManager.stop()
+            call.respond(Success(data = "ADB server stopped"))
         }
 
         post("/key", {
@@ -35,8 +37,8 @@ fun Route.adbRoutes() {
         }) {
             val publicKey = call.request.queryParameters["publicKey"].orEmpty()
             require(publicKey.isNotEmpty()) { "Missing publicKey parameter" }
-            val data = AdbManager.installKey(publicKey)
-            call.respond(Success(data = data))
+            AdbManager.installKey(publicKey)
+            call.respond(Success(data = "ADB key installed"))
         }
 
         get("/status", {

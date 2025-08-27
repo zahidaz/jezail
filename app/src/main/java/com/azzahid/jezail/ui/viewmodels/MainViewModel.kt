@@ -89,8 +89,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val adbStatus = AdbManager.getStatus()
             Log.d(TAG, "ADB status updated: $adbStatus")
             _uiState.value = _uiState.value.copy(
-                isAdbRunning = adbStatus["isRunning"] == "true",
-                adbVersion = adbStatus["version"] ?: "unknown"
+                isAdbRunning = adbStatus["isRunning"] as Boolean,
             )
         }.onFailure { e ->
             Log.e(TAG, "Error updating ADB status", e)

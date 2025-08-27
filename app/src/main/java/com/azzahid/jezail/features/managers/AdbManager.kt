@@ -8,10 +8,10 @@ object AdbManager {
     private const val ADB_KEYS_DIR = "/data/misc/adb"
     private const val ADB_KEYS_FILE = "$ADB_KEYS_DIR/adb_keys"
 
-    fun getStatus(): Map<String, String> {
+    fun getStatus(): Map<String, Any> {
         val running = Shell.cmd("pgrep adbd").exec().isSuccess
         return mapOf(
-            "isRunning" to running.toString(),
+            "isRunning" to running,
             "port" to ADB_PORT,
         )
     }
@@ -45,8 +45,8 @@ object AdbManager {
     }
 
     fun installKey(publicKey: String) {
-        if (publicKey.isBlank()) {
-            throw IllegalArgumentException("No ADB key provided")
+        require(publicKey.isNotBlank()){
+            "Public key cannot be blank"
         }
 
         val result = Shell.cmd(
