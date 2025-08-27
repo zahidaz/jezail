@@ -1,5 +1,6 @@
 package com.azzahid.jezail.core.api
 
+import android.util.Log
 import com.azzahid.jezail.core.api.routes.adbRoutes
 import com.azzahid.jezail.core.api.routes.deviceRoutes
 import com.azzahid.jezail.core.api.routes.filesRoutes
@@ -48,6 +49,7 @@ import kotlin.reflect.KClass
 
 typealias CIOEmbeddedServer = EmbeddedServer<CIOApplicationEngine, Configuration>
 
+private const val TAG = "HttpServer"
 
 fun buildServer(port: Int): CIOEmbeddedServer {
     return embeddedServer(CIO, port = port) {
@@ -129,12 +131,15 @@ fun Application.configureServer() {
     install(StatusPages) {
         exception<IllegalArgumentException> { call, cause ->
             call.respond(BadRequest, Failure(error = cause.message ?: "Invalid request"))
+            Log.e(TAG, "Unhandled exception for $call", cause)
         }
+
         exception<IllegalStateException> { call, cause ->
             call.respond(
                 Conflict,
                 Failure(error = cause.message ?: "Request could not be completed")
             )
+            Log.e(TAG, "Unhandled exception for $call", cause)
         }
         exception<Throwable> { call, cause ->
             call.respond(
@@ -153,6 +158,7 @@ fun Application.configureServer() {
                         }
                     ).toString())
             )
+            Log.e(TAG, "Unhandled exception for $call", cause)
         }
         status(NotFound) { call, status ->
             call.respond(status, Failure(error = "404"))
