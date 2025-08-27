@@ -1,10 +1,12 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
+import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.FridaManager
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.route
+import io.ktor.http.HttpStatusCode.Companion.ServiceUnavailable
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 
@@ -43,8 +45,15 @@ fun Route.fridaRoutes() {
         get("/install", {
             description = "Install Frida on the device"
         }) {
-            FridaManager.install(JezailApp.appContext)
-            call.respond(Success(data = FridaManager.getCurrentVersion()))
+            runCatching {
+                FridaManager.install(JezailApp.appContext)
+                call.respond(Success(data = FridaManager.getCurrentVersion()))
+            }.onFailure {
+                call.respond(
+                    status = ServiceUnavailable, Failure(error = it.message ?: "Unknown error")
+                )
+            }
+
         }
 
         get("/update", {

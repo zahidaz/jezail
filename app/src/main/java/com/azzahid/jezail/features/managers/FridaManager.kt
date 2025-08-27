@@ -6,22 +6,20 @@ import com.azzahid.jezail.core.services.withRootFSFile
 import com.azzahid.jezail.core.utils.downloadFile
 import com.azzahid.jezail.core.utils.extractXZFile
 import com.topjohnwu.superuser.Shell
-import com.topjohnwu.superuser.nio.ExtendedFile
 import org.json.JSONObject
 import java.io.File
-import java.io.IOException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 object FridaManager {
     private const val TAG = "FridaManager"
     const val FRIDA_PORT = "27042"
+    private const val FRIDA_BINARY_NAME = "frida-server"
     val rootPath = File("/data/local/tmp/.jezail/frida")
     val versionFilePath = File(rootPath, "version")
-    val fridaBinaryPath = File(rootPath, "frida-server")
+    val fridaBinaryPath = File(rootPath, FRIDA_BINARY_NAME)
 
     private val supportedAbi = listOf("arm64", "arm", "x86", "x86_64")
-    private const val FRIDA_API_URL = "https://api.github.com/repos/frida/frida/releases/latest"
 
     private val abi: String by lazy {
         val abiResult = Shell.cmd("getprop ro.product.cpu.abi").exec()
@@ -33,12 +31,15 @@ object FridaManager {
         "https://github.com/frida/frida/releases/download/$version/frida-server-$version-android-$abi.xz"
 
     private fun fetchLatestVersion(): String {
-        (URL(FRIDA_API_URL).openConnection() as HttpsURLConnection).run {
+        val url = URL("https://api.github.com/repos/frida/frida/releases/latest")
+        (url.openConnection() as HttpsURLConnection).run {
             requestMethod = "GET"
             connectTimeout = 10000
             readTimeout = 10000
             setRequestProperty("Accept", "application/json")
-            if (responseCode != 200) throw IOException("Github API failed with $responseCode")
+            if (responseCode != 200) {
+                throw IllegalStateException("Github API returned: $responseMessage code: $responseCode")
+            }
             return inputStream.bufferedReader().use {
                 JSONObject(it.readText()).getString("tag_name")
             }
@@ -49,9 +50,6 @@ object FridaManager {
         if (it.exists()) it.readText() else null
     }
 
-    private suspend fun needsUpdate(): Boolean =
-        fetchLatestVersion().let { latest -> getCurrentVersion() == null || getCurrentVersion() != latest }
-
     private suspend fun downloadAndInstall(context: Context) {
         val latestVersion = fetchLatestVersion()
 
@@ -59,9 +57,9 @@ object FridaManager {
         if (tmpDirPath.exists()) tmpDirPath.deleteRecursively()
         tmpDirPath.mkdirs()
 
-        val xz = File(tmpDirPath, "frida-server.xz")
+        val xz = File(tmpDirPath, "${FRIDA_BINARY_NAME}.xz")
         downloadFile(getDownloadUrl(latestVersion), xz)
-        val downloaded = File(tmpDirPath, "frida-server")
+        val downloaded = File(tmpDirPath, FRIDA_BINARY_NAME)
         extractXZFile(xz, downloaded)
         withRootFS { rootfs ->
             val sourceFile = downloaded
@@ -87,11 +85,11 @@ object FridaManager {
     }
 
     suspend fun install(context: Context) {
-        return downloadAndInstall(context)
+        downloadAndInstall(context)
     }
 
     suspend fun updateToLatest(context: Context) {
-        if (needsUpdate()) downloadAndInstall(context)
+        downloadAndInstall(context)
     }
 
     fun start(port: Int? = null) {
@@ -101,7 +99,7 @@ object FridaManager {
             "chmod +x ${fridaBinaryPath.absolutePath}",
             "nohup ${fridaBinaryPath.absolutePath} -l 0.0.0.0:$chosenPort &"
         ).exec()
-        if (!result.isSuccess){
+        if (!result.isSuccess) {
             val msg = buildString {
                 appendLine(result.err.joinToString())
                 appendLine(result.out.joinToString())
@@ -118,20 +116,28 @@ object FridaManager {
     }
 
     fun stop(): Boolean {
-        Shell.cmd("pkill -f frida-server", "killall frida-server").exec()
-        return !Shell.cmd("pgrep frida-server").exec().isSuccess
+        Shell.cmd("pkill -f $FRIDA_BINARY_NAME", "killall $FRIDA_BINARY_NAME").exec()
+        return !Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess
     }
 
-    suspend fun getStatus(): Map<String, String> = mapOf(
-        "isRunning" to Shell.cmd("pgrep frida-server").exec().isSuccess.toString(),
+    suspend fun getStatus(): Map<String, Any> = mapOf(
+        "isRunning" to Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess,
         "port" to FRIDA_PORT,
         "version" to (getCurrentVersion() ?: "not installed")
     )
 
-    suspend fun getInfo(): Map<String, String> = mapOf(
-        "currentVersion" to (getCurrentVersion() ?: "not installed"),
-        "latestVersion" to runCatching { fetchLatestVersion() }.getOrDefault("unknown"),
-        "needsUpdate" to needsUpdate().toString(),
-        "installPath" to fridaBinaryPath.absolutePath
-    )
+    suspend fun getInfo(): Map<String, Any> = buildMap {
+        val current = getCurrentVersion()
+        put("currentVersion", current ?: "not installed")
+        runCatching {
+            val latest = fetchLatestVersion()
+            put("latestVersion", latest)
+            put("needsUpdate", current != null && current != latest)
+        }.getOrElse {
+            put("latestVersion", it.message ?: "Failed to fetch latest version")
+            put("needsUpdate", false)
+        }
+        put("installPath", current?.let { fridaBinaryPath.absolutePath } ?: "not installed")
+    }
+
 }
