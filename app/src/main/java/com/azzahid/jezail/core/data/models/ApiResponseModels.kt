@@ -8,6 +8,7 @@ import io.ktor.http.fromFileExtension
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.header
 import io.ktor.server.response.respondBytes
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -15,7 +16,7 @@ import java.io.File
 @Serializable
 sealed class ApiResponse<out T> {
     abstract val success: Boolean
-    val timestamp: String = System.currentTimeMillis().toString()
+    abstract val timestamp: String
 }
 
 @Serializable
@@ -23,13 +24,15 @@ sealed class ApiResponse<out T> {
 data class Success<T>(
     val data: T,
     override val success: Boolean = true,
+    override val timestamp: String = System.currentTimeMillis().toString(),
 ) : ApiResponse<T>()
 
 @Serializable
 @SerialName("failure")
-data class Failure(
-    val error: String,
+data class Failure<T>(
+    val error: T,
     override val success: Boolean = false,
+    override val timestamp: String = System.currentTimeMillis().toString(),
 ) : ApiResponse<Nothing>()
 
 class AssetsResourceProvider(
