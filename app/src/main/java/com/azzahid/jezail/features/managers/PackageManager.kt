@@ -6,9 +6,9 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import com.azzahid.jezail.JezailApp
-import com.azzahid.jezail.core.utils.DrawableEncoder
 import com.azzahid.jezail.core.data.models.SimplePackageInfo
 import com.azzahid.jezail.core.data.models.toSimplePackageInfo
+import com.azzahid.jezail.core.utils.DrawableEncoder
 import com.google.gson.Gson
 import com.topjohnwu.superuser.Shell
 import kotlinx.serialization.json.Json
@@ -179,10 +179,9 @@ object PackageManager {
 
         val result = Shell.cmd("pm install $flags '${apk.absolutePath}'").exec()
 
-        require(result.isSuccess && result.out.any { it.contains("Success", ignoreCase = true) }) {
-            "Failed to install '${apk.absolutePath}': ${
-                (result.err + result.out).joinToString("\n").ifEmpty { "Unknown error" }
-            }"
+        if (!result.isSuccess) {
+            val error = result.err.joinToString("\n").ifEmpty { result.out.joinToString("\n") }
+            throw Exception("Failed to install '${apk.absolutePath}' '${apk.absolutePath}' code:${result.code} error:$error")
         }
     }
 

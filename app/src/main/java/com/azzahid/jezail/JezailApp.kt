@@ -17,9 +17,9 @@ class JezailApp : Application() {
     override fun onCreate() {
         super.onCreate()
         appContext = this
-
-        Shell.enableVerboseLogging =
-            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+//
+//        Shell.enableVerboseLogging =
+//            (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         Shell.setDefaultBuilder(
             Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).setTimeout(10)
         )
