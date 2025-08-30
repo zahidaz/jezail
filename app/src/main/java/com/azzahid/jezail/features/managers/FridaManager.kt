@@ -2,7 +2,6 @@ package com.azzahid.jezail.features.managers
 
 import android.content.Context
 import com.azzahid.jezail.core.services.withRootFS
-import com.azzahid.jezail.core.services.withRootFSFile
 import com.azzahid.jezail.core.utils.downloadFile
 import com.azzahid.jezail.core.utils.extractXZFile
 import com.topjohnwu.superuser.Shell
@@ -16,7 +15,6 @@ object FridaManager {
     const val FRIDA_PORT = "27042"
     private const val FRIDA_BINARY_NAME = "frida-server"
     val rootPath = File("/data/local/tmp/.jezail/frida")
-    val versionFilePath = File(rootPath, "version")
     val fridaBinaryPath = File(rootPath, FRIDA_BINARY_NAME)
 
     private val supportedAbi = listOf("arm64", "arm", "x86", "x86_64")
@@ -46,8 +44,10 @@ object FridaManager {
         }
     }
 
-    suspend fun getCurrentVersion(): String? = withRootFSFile(versionFilePath.toString()) {
-        if (it.exists()) it.readText() else null
+    fun getCurrentVersion(): String? {
+        return runCatching {
+            Shell.cmd("$fridaBinaryPath --version").exec().out.joinToString { it.trim() }
+        }.getOrNull()
     }
 
     private suspend fun downloadAndInstall(context: Context) {
@@ -68,13 +68,6 @@ object FridaManager {
             sourceFile.inputStream().use { input ->
                 targetFile.newOutputStream().use { output ->
                     input.copyTo(output)
-                }
-            }
-
-            rootfs.getFile(versionFilePath.absolutePath).let {
-                it.parentFile?.mkdirs()
-                it.newOutputStream().use { outputStream ->
-                    outputStream.write(latestVersion.toByteArray())
                 }
             }
         }
@@ -120,13 +113,13 @@ object FridaManager {
         return !Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess
     }
 
-    suspend fun getStatus(): Map<String, Any> = mapOf(
+    fun getStatus(): Map<String, Any> = mapOf(
         "isRunning" to Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess,
         "port" to FRIDA_PORT,
         "version" to (getCurrentVersion() ?: "not installed")
     )
 
-    suspend fun getInfo(): Map<String, Any> = buildMap {
+    fun getInfo(): Map<String, Any> = buildMap {
         val current = getCurrentVersion()
         put("currentVersion", current ?: "not installed")
         runCatching {
