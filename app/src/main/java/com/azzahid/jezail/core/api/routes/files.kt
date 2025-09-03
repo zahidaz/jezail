@@ -123,7 +123,7 @@ fun Route.filesRoutes() {
             val sortedPaths = srcPaths.sorted()
             val mutexes = sortedPaths.map { getMutexFor(it) }
 
-            mutexes.fold(Unit) { _, mutex -> mutex.withLock { } }
+            mutexes.fold(Unit) { _, mutex -> mutex.lock() }
 
             try {
                 val uuid = UUID.randomUUID().toString()
