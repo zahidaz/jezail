@@ -15,12 +15,22 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 fun Route.packageRoutes() {
     route("/package", {
         description = "Android package management endpoints"
     }) {
+        val packageMutexes = ConcurrentHashMap<String, Mutex>()
+
+        fun getMutexFor(pkg: String): Mutex {
+            val normalizedPkg = pkg.trim()
+            return packageMutexes.computeIfAbsent(normalizedPkg) { Mutex() }
+        }
+
         get("/list", {
             description = "Get all installed applications"
         }) {
@@ -76,9 +86,12 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            val activity = call.request.queryParameters["activity"]
-            PackageManager.tryLaunchApp(pkg, activity)
-            call.respond(Success("App launched successfully"))
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                val activity = call.request.queryParameters["activity"]
+                PackageManager.tryLaunchApp(pkg, activity)
+                call.respond(Success("App launched successfully"))
+            }
         }
 
         get("/{package}/stop", {
@@ -90,8 +103,11 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            PackageManager.tryStopApp(pkg)
-            call.respond(Success("App stopped successfully"))
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                PackageManager.tryStopApp(pkg)
+                call.respond(Success("App stopped successfully"))
+            }
         }
 
         delete("/{package}", {
@@ -103,8 +119,11 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            PackageManager.tryUninstallApp(pkg)
-            call.respond(Success("App uninstalled successfully"))
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                PackageManager.tryUninstallApp(pkg)
+                call.respond(Success("App uninstalled successfully"))
+            }
         }
 
         post("/install", {
@@ -168,11 +187,14 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            val permission = call.request.queryParameters["permission"]
-                ?: throw IllegalArgumentException("Permission parameter is required")
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                val permission = call.request.queryParameters["permission"]
+                    ?: throw IllegalArgumentException("Permission parameter is required")
 
-            PackageManager.grantPermission(pkg, permission)
-            call.respond(Success("Permission '$permission' granted to '$pkg'"))
+                PackageManager.grantPermission(pkg, permission)
+                call.respond(Success("Permission '$permission' granted to '$pkg'"))
+            }
         }
 
         post("/{package}/permissions/revoke", {
@@ -188,11 +210,14 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            val permission = call.request.queryParameters["permission"]
-                ?: throw IllegalArgumentException("Permission parameter is required")
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                val permission = call.request.queryParameters["permission"]
+                    ?: throw IllegalArgumentException("Permission parameter is required")
 
-            PackageManager.revokePermission(pkg, permission)
-            call.respond(Success("Permission '$permission' revoked from '$pkg'"))
+                PackageManager.revokePermission(pkg, permission)
+                call.respond(Success("Permission '$permission' revoked from '$pkg'"))
+            }
         }
 
         get("/{package}/permissions", {
@@ -264,8 +289,11 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            PackageManager.clearAppData(pkg)
-            call.respond(Success("Data cleared for '$pkg'"))
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                PackageManager.clearAppData(pkg)
+                call.respond(Success("Data cleared for '$pkg'"))
+            }
         }
 
         post("/{package}/clear-cache", {
@@ -277,8 +305,11 @@ fun Route.packageRoutes() {
             }
         }) {
             val pkg = call.parameters.getOrFail("package")
-            PackageManager.clearAppCache(pkg)
-            call.respond(Success("Cache cleared for '$pkg'"))
+            val mutex = getMutexFor(pkg)
+            mutex.withLock {
+                PackageManager.clearAppCache(pkg)
+                call.respond(Success("Cache cleared for '$pkg'"))
+            }
         }
 
         get("/{package}/signatures", {
