@@ -1,7 +1,6 @@
 package com.azzahid.jezail.features.managers
 
 import android.Manifest.permission.READ_PHONE_STATE
-import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -25,6 +24,8 @@ import androidx.core.content.ContextCompat.checkSelfPermission
 import com.azzahid.jezail.JezailApp
 import com.topjohnwu.superuser.Shell
 import java.io.File
+import java.io.RandomAccessFile
+
 
 object DeviceManager {
 
@@ -179,6 +180,34 @@ object DeviceManager {
             "features" to cpuDetails["Features"]?.split(" ")
         )
     }
+
+    fun getCpuUsageMap(): MutableMap<String?, Float?> {
+        val result: MutableMap<String?, Float?> = HashMap()
+        try {
+            val reader = RandomAccessFile("/proc/stat", "r")
+            var load = reader.readLine()
+            var toks: Array<String?> =
+                load.split(" +".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val idle1 = toks[3]!!.toLong()
+            val cpu1 =
+                (toks[4]!!.toLong() + toks[5]!!.toLong() + toks[6]!!.toLong() + toks[2]!!.toLong() + toks[7]!!.toLong() + toks[1]!!.toLong())
+            Thread.sleep(360)
+            reader.seek(0)
+            load = reader.readLine()
+            reader.close()
+            toks = load.split(" +".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val idle2 = toks[3]!!.toLong()
+            val cpu2 =
+                (toks[4]!!.toLong() + toks[5]!!.toLong() + toks[6]!!.toLong() + toks[2]!!.toLong() + toks[7]!!.toLong() + toks[1]!!.toLong())
+            val cpuUsage = (cpu2 - cpu1).toFloat() / ((cpu2 + idle2) - (cpu1 + idle1))
+            result.put("cpu_usage", cpuUsage)
+        } catch (ex: java.lang.Exception) {
+            ex.printStackTrace()
+            result.put("cpu_usage", 0f)
+        }
+        return result
+    }
+
 
     fun getRamInfo(): Map<String, Any?> {
         val activityManager =
