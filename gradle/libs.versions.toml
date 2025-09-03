@@ -9,6 +9,7 @@ coreKtx = "1.17.0"
 junit = "4.13.2"
 activityCompose = "1.10.1"
 composeBom = "2025.08.00"
+kotlinxCoroutinesCore = "1.10.2"
 ktorServerCallLogging = "3.2.3"
 ktorServerCors = "3.2.3"
 ktorSwaggerUi = "5.2.0"
@@ -27,6 +28,7 @@ androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
 ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktorServerCallLogging" }

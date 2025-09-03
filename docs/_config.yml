@@ -1,0 +1,8 @@
+title: Jezail - Android Pentesting Toolkit
+description: A powerful, all-in-one Android APK that runs entirely on your rooted device, providing comprehensive pentesting capabilities without needing external tools or a PC.
+theme: minima
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+markdown: kramdown
+highlighter: rouge

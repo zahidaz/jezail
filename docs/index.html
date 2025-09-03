@@ -1,1 +1,290 @@
-jezail
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jezail - Android Pentesting Toolkit</title>
+    <link rel="stylesheet" href="css/shared.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <img src="assets/crosshair_logo.svg" alt="Jezail" class="brand-logo">
+                    <span class="brand-text">JEZAIL</span>
+                </div>
+                <div class="nav-links">
+                    <a href="#home" class="nav-link active">Home</a>
+                    <a href="gallery.html" class="nav-link">Gallery</a>
+                    <a href="https://github.com/zahidaz/jezail" class="nav-link external" target="_blank">
+                        <i class="fab fa-github"></i> GitHub
+                    </a>
+                </div>
+                <div class="nav-toggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <section id="home" class="hero-section">
+                <div class="hero-bg"></div>
+                <div class="hero-crosshair">
+                    <svg class="crosshair-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">
+                        <circle class="crosshair-outer" cx="50" cy="50" r="35" fill="none" stroke="#f44336" stroke-width="6" opacity="0.4"/>
+                        <circle class="crosshair-inner" cx="50" cy="50" r="15" fill="none" stroke="#d32f2f" stroke-width="4" opacity="0.3"/>
+                        <circle class="crosshair-center" cx="50" cy="50" r="3" fill="#f44336" opacity="0.5"/>
+                        <rect class="crosshair-tick top" x="47" y="5" width="6" height="25" fill="#d32f2f" opacity="0.4"/>
+                        <rect class="crosshair-tick bottom" x="47" y="70" width="6" height="25" fill="#d32f2f" opacity="0.4"/>
+                        <rect class="crosshair-tick left" x="5" y="47" width="25" height="6" fill="#d32f2f" opacity="0.4"/>
+                        <rect class="crosshair-tick right" x="70" y="47" width="25" height="6" fill="#d32f2f" opacity="0.4"/>
+                    </svg>
+                </div>
+                <div class="hero-container">
+                    <div class="hero-content">
+                        <h1 class="hero-title">
+                            <span class="title-main">JEZAIL</span>
+                            <span class="title-sub"><span class="android-text">Android</span> Pentesting Toolkit</span>
+                        </h1>
+                        <p class="hero-description">
+                            One APK. Complete arsenal. Mobile security lab.
+                        </p>
+                        <div class="hero-actions">
+                            <a href="https://github.com/zahidaz/jezail/releases" class="btn btn-primary">
+                                <i class="fas fa-download"></i>
+                                Download APK
+                            </a>
+                            <a href="gallery.html" class="btn btn-secondary">
+                                <i class="fas fa-images"></i>
+                                Screenshots
+                            </a>
+                        </div>
+                    </div>
+                    <div class="hero-features">
+                        <div class="feature-pill">
+                            <i class="fas fa-bug"></i>
+                            Dynamic Analysis
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-code-branch"></i>
+                            Frida Integration
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-boxes"></i>
+                            App Management
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-mobile-alt"></i>
+                            Device Control
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-database"></i>
+                            ADB Server
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-key"></i>
+                            Permission Control
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-file-code"></i>
+                            File Operations
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-search"></i>
+                            Process Monitor
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-terminal"></i>
+                            System Control
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-shield-alt"></i>
+                            SELinux Toggle
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-camera"></i>
+                            Screenshots
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-chart-bar"></i>
+                            Hardware Monitor
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-network-wired"></i>
+                            Network Tools
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-list-alt"></i>
+                            Process List
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-cogs"></i>
+                            System Properties
+                        </div>
+                        <div class="feature-pill">
+                            <i class="fas fa-clipboard"></i>
+                            Clipboard Manager
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            <section class="setup-section">
+                <div class="container">
+                    <div class="section-header">
+                        <h2>Quick Setup</h2>
+                        <p>Get up and running in minutes</p>
+                    </div>
+                    <div class="setup-flow">
+                        <div class="step-card">
+                            <div class="step-header">
+                                <div class="step-number">01</div>
+                                <div class="step-icon">
+                                    <i class="fas fa-download"></i>
+                                </div>
+                            </div>
+                            <div class="step-content">
+                                <h3>Get</h3>
+                                <p>Get the latest APK and install on your rooted Android device</p>
+                                <div class="step-details">
+                                    <div class="detail-item">
+                                        <i class="fas fa-unlock-alt"></i>
+                                        <span>Root access required</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        <span>Android 7.0+ supported</span>
+                                    </div>
+                                </div>
+                                <a href="https://github.com/zahidaz/jezail/releases" class="step-action">
+                                    <i class="fas fa-download"></i>
+                                    Download APK
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="step-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-header">
+                                <div class="step-number">02</div>
+                                <div class="step-icon">
+                                    <i class="fas fa-rocket"></i>
+                                </div>
+                            </div>
+                            <div class="step-content">
+                                <h3>Launch</h3>
+                                <p>Start Jezail to automatically initialize the HTTP server</p>
+                                <div class="step-details">
+                                    <div class="detail-item">
+                                        <i class="fas fa-server"></i>
+                                        <span>Auto-starts on port 8080</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <span>Background service</span>
+                                    </div>
+                                </div>
+                                <div class="step-indicator">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Ready when launched</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step-arrow">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-header">
+                                <div class="step-number">03</div>
+                                <div class="step-icon">
+                                    <i class="fas fa-globe"></i>
+                                </div>
+                            </div>
+                            <div class="step-content">
+                                <h3>Ready</h3>
+                                <p>Open your browser and connect to the web UI</p>
+                                <div class="step-details">
+                                    <div class="detail-item">
+                                        <i class="fas fa-wifi"></i>
+                                        <span>Same network required</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fas fa-desktop"></i>
+                                        <span>Any device/browser</span>
+                                    </div>
+                                </div>
+                                <div class="step-url">
+                                    <div class="url-box">
+                                        <i class="fas fa-link"></i>
+                                        <code>http://device-ip:8080</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-main">
+                    <div class="footer-brand">
+                        <div class="brand-info">
+                            <img src="assets/crosshair_logo.svg" alt="Jezail" class="footer-logo">
+                            <span class="brand-name">JEZAIL</span>
+                        </div>
+                        <p class="brand-tagline">Android Pentesting Toolkit</p>
+                        <p class="brand-description">Transform your rooted device into a comprehensive security testing platform.</p>
+                    </div>
+                    <div class="footer-nav">
+                        <div class="footer-section">
+                            <h4>Resources</h4>
+                            <div class="footer-links">
+                                <a href="https://github.com/zahidaz/jezail">
+                                    <i class="fab fa-github"></i>
+                                    Repository
+                                </a>
+                                <a href="https://github.com/zahidaz/jezail/releases">
+                                    <i class="fas fa-download"></i>
+                                    Releases
+                                </a>
+                                <a href="gallery.html">
+                                    <i class="fas fa-images"></i>
+                                    Screenshots
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <div class="footer-copyright">
+                        <p>&copy; 2024 Jezail Project</p>
+                        <span class="divider">•</span>
+                        <p>MIT License</p>
+                    </div>
+                    <div class="footer-social">
+                        <a href="https://github.com/zahidaz/jezail" class="social-link" target="_blank">
+                            <i class="fab fa-github"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

@@ -9,8 +9,11 @@ import io.github.smiley4.ktoropenapi.route
 import io.ktor.http.HttpStatusCode.Companion.ServiceUnavailable
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 fun Route.fridaRoutes() {
+    val fridaRouteMutex = Mutex()
     route("/frida", {
         description = "Frida dynamic instrumentation toolkit management endpoints"
     }) {
@@ -18,27 +21,35 @@ fun Route.fridaRoutes() {
         get("/status", {
             description = "Get the current status of the Frida server"
         }) {
-            call.respond(Success(data = FridaManager.getStatus()))
+            fridaRouteMutex.withLock {
+                call.respond(Success(data = FridaManager.getStatus()))
+            }
         }
 
         get("/info", {
             description = "Get Frida installation and version information"
         }) {
-            call.respond(Success(data = FridaManager.getInfo()))
+            fridaRouteMutex.withLock {
+                call.respond(Success(data = FridaManager.getInfo()))
+            }
         }
 
         get("/start", {
             description = "Start the Frida server"
         }) {
-            FridaManager.start()
-            call.respond(Success(data = "Frida server started"))
+            fridaRouteMutex.withLock {
+                FridaManager.start()
+                call.respond(Success(data = "Frida server started"))
+            }
         }
 
         get("/stop", {
             description = "Stop the Frida server"
         }) {
-            FridaManager.stop()
-            call.respond(Success(data = "Frida server stopped"))
+            fridaRouteMutex.withLock {
+                FridaManager.stop()
+                call.respond(Success(data = "Frida server stopped"))
+            }
         }
 
 
@@ -46,8 +57,12 @@ fun Route.fridaRoutes() {
             description = "Install Frida on the device"
         }) {
             runCatching {
-                FridaManager.install(JezailApp.appContext)
-                call.respond(Success(data = FridaManager.getCurrentVersion()))
+
+                fridaRouteMutex.withLock {
+                    FridaManager.install(JezailApp.appContext)
+                    call.respond(Success(data = FridaManager.getCurrentVersion()))
+                }
+
             }.onFailure {
                 call.respond(
                     status = ServiceUnavailable, Failure(error = it.message ?: "Unknown error")
@@ -59,8 +74,10 @@ fun Route.fridaRoutes() {
         get("/update", {
             description = "Update Frida to the latest version"
         }) {
-            FridaManager.updateToLatest(JezailApp.appContext)
-            call.respond(Success(data = FridaManager.getCurrentVersion()))
+            fridaRouteMutex.withLock {
+                FridaManager.updateToLatest(JezailApp.appContext)
+                call.respond(Success(data = FridaManager.getCurrentVersion()))
+            }
         }
     }
 }

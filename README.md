@@ -2,7 +2,7 @@
 
 Jezail is a **powerful, all-in-one Android APK** that **runs entirely on your rooted device**, providing comprehensive pentesting capabilities without needing external tools or a PC. It transforms your Android phone or tablet into a fully autonomous security testing platform with a rich set of features accessible through an embedded web UI served locally from the device.
 
-With Jezail, everything happens *from within Android* - no complicated setups, no dependency on external hosts, deep system access and dynamic analysis powered by a bundled REST API and an interactive Flutter-based web interface.
+With Jezail, everything happens *from within Android* - no complicated setups, no dependency on external hosts,exi deep system access and dynamic analysis powered by a bundled REST API and an interactive Flutter-based web interface.
 
 ## Documentation Overview
 
