@@ -13,10 +13,12 @@ import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
-
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 fun Route.deviceRoutes() {
     route("/device") {
+        val seLinuxMutex = Mutex()
 
         get({
             description =
@@ -38,9 +40,11 @@ fun Route.deviceRoutes() {
         post("/selinux/toggle", {
             description = "Toggle SELinux mode between Enforcing and Permissive"
         }) {
-            val currentStatus = DeviceManager.getSELinuxStatus().equals("Enforcing", true)
-            DeviceManager.setSELinuxMode(!currentStatus)
-            call.respond(Success(DeviceManager.getSELinuxStatus()))
+            seLinuxMutex.withLock {
+                val currentStatus = DeviceManager.getSELinuxStatus().equals("Enforcing", true)
+                DeviceManager.setSELinuxMode(!currentStatus)
+                call.respond(Success(DeviceManager.getSELinuxStatus()))
+            }
         }
 
         route("/clipboard") {
