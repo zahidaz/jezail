@@ -18,13 +18,23 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
 import io.ktor.utils.io.jvm.javaio.copyTo
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 fun Route.filesRoutes() {
     route("/files", {
         description = "File system management endpoints"
     }) {
+        val fileMutexes = ConcurrentHashMap<String, Mutex>()
+
+        fun getMutexFor(path: String): Mutex {
+            val normalizedPath = path.trim().replace("\\", "/") // Normalize for consistency
+            return fileMutexes.computeIfAbsent(normalizedPath) { Mutex() }
+        }
+
         get("/info", {
             description = "Get information about a file or directory"
             request {
@@ -77,20 +87,24 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val multipart = call.receiveMultipart(formFieldLimit = 999L * 1024 * 1024)
             val destPath = call.request.queryParameters["path"].orEmpty()
             require(destPath.isNotBlank()) { "Destination path is required" }
-            withRootFSFile(destPath) { df ->
-                require(!df.exists()) { "File exists: ${df.absolutePath}" }
-                multipart.forEachPart { part ->
-                    if (part is PartData.FileItem) {
-                        df.newOutputStream().use { output ->
-                            part.provider().copyTo(output)
+
+            val mutex = getMutexFor(destPath)
+            mutex.withLock {
+                val multipart = call.receiveMultipart(formFieldLimit = 999L * 1024 * 1024)
+                withRootFSFile(destPath) { df ->
+                    require(!df.exists()) { "File exists: ${df.absolutePath}" }
+                    multipart.forEachPart { part ->
+                        if (part is PartData.FileItem) {
+                            df.newOutputStream().use { output ->
+                                part.provider().copyTo(output)
+                            }
                         }
+                        part.dispose()
                     }
-                    part.dispose()
+                    call.respond(Success("File uploaded"))
                 }
-                call.respond(Success("File uploaded"))
             }
         }
 
@@ -106,37 +120,45 @@ fun Route.filesRoutes() {
             val srcPaths = call.request.queryParameters.getAll("paths") ?: emptyList()
             require(srcPaths.isNotEmpty()) { "At least one path is required" }
 
-            val uuid = UUID.randomUUID().toString()
-            val downloadDir =
-                File(JezailApp.appContext.getExternalFilesDir(null), "download/$uuid")
-            downloadDir.mkdirs()
+            val sortedPaths = srcPaths.sorted()
+            val mutexes = sortedPaths.map { getMutexFor(it) }
 
-            srcPaths.forEach { srcPath ->
-                withRootFSFile(srcPath) { srcFile ->
-                    val destFile = File(downloadDir, srcFile.name)
-                    if (srcFile.isDirectory) {
-                        srcFile.copyRecursively(destFile, overwrite = true)
-                    } else {
-                        srcFile.copyTo(destFile, overwrite = true)
+            mutexes.fold(Unit) { _, mutex -> mutex.withLock { } }
+
+            try {
+                val uuid = UUID.randomUUID().toString()
+                val downloadDir =
+                    File(JezailApp.appContext.getExternalFilesDir(null), "download/$uuid")
+                downloadDir.mkdirs()
+
+                srcPaths.forEach { srcPath ->
+                    withRootFSFile(srcPath) { srcFile ->
+                        val destFile = File(downloadDir, srcFile.name)
+                        if (srcFile.isDirectory) {
+                            srcFile.copyRecursively(destFile, overwrite = true)
+                        } else {
+                            srcFile.copyTo(destFile, overwrite = true)
+                        }
                     }
                 }
+
+                val downloadableFile =
+                    if (srcPaths.size == 1 && withRootFSFile(srcPaths.first()) { it.isFile }) {
+                        File(downloadDir, File(srcPaths.first()).name)
+                    } else {
+                        zipDirectory(downloadDir, uuid) ?: throw Exception("Failed to zip files")
+                    }
+
+                call.response.header(
+                    "Content-Disposition",
+                    "attachment; filename=\"${downloadableFile.name}.${downloadableFile.extension}\""
+                )
+                call.respondFile(downloadableFile)
+                downloadDir.deleteRecursively()
+            } finally {
+                mutexes.reversed().forEach { it.unlock() }
             }
-
-            val downloadableFile =
-                if (srcPaths.size == 1 && withRootFSFile(srcPaths.first()) { it.isFile }) {
-                    File(downloadDir, File(srcPaths.first()).name)
-                } else {
-                    zipDirectory(downloadDir, uuid) ?: throw Exception("Failed to zip files")
-                }
-
-            call.response.header(
-                "Content-Disposition",
-                "attachment; filename=\"${downloadableFile.name}.${downloadableFile.extension}\""
-            )
-            call.respondFile(downloadableFile)
-            downloadDir.deleteRecursively()
         }
-
 
         post("/write", {
             description = "Write content to a text file"
@@ -151,9 +173,12 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            val content = call.receiveText()
-            FileManager.writeFile(path, content)
-            call.respond(Success("File written"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                val content = call.receiveText()
+                FileManager.writeFile(path, content)
+                call.respond(Success("File written"))
+            }
         }
 
         post("/rename", {
@@ -171,8 +196,18 @@ fun Route.filesRoutes() {
         }) {
             val oldPath = call.request.queryParameters["oldPath"].orEmpty()
             val newPath = call.request.queryParameters["newPath"].orEmpty()
-            FileManager.renameFile(oldPath, newPath)
-            call.respond(Success("File renamed"))
+
+            val sortedPaths = listOf(oldPath, newPath).sorted()
+            val mutexes = sortedPaths.map { getMutexFor(it) }
+
+            mutexes.fold(Unit) { _, mutex -> mutex.withLock { } }
+
+            try {
+                FileManager.renameFile(oldPath, newPath)
+                call.respond(Success("File renamed"))
+            } finally {
+                mutexes.reversed().forEach { it.unlock() }
+            }
         }
 
         post("/mkdir", {
@@ -185,8 +220,11 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            FileManager.createDirectory(path)
-            call.respond(Success("Directory created"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                FileManager.createDirectory(path)
+                call.respond(Success("Directory created"))
+            }
         }
 
         post("/chmod", {
@@ -203,9 +241,12 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            val perm = call.request.queryParameters["permissions"].orEmpty()
-            FileManager.changePermissions(path, perm)
-            call.respond(Success("Permissions changed"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                val perm = call.request.queryParameters["permissions"].orEmpty()
+                FileManager.changePermissions(path, perm)
+                call.respond(Success("Permissions changed"))
+            }
         }
 
         post("/chown", {
@@ -222,9 +263,12 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            val owner = call.request.queryParameters["owner"].orEmpty()
-            FileManager.changeOwnership(path, owner)
-            call.respond(Success("Ownership changed"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                val owner = call.request.queryParameters["owner"].orEmpty()
+                FileManager.changeOwnership(path, owner)
+                call.respond(Success("Ownership changed"))
+            }
         }
 
         post("/chgrp", {
@@ -241,9 +285,12 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            val group = call.request.queryParameters["group"].orEmpty()
-            FileManager.changeGroup(path, group)
-            call.respond(Success("Group changed"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                val group = call.request.queryParameters["group"].orEmpty()
+                FileManager.changeGroup(path, group)
+                call.respond(Success("Group changed"))
+            }
         }
 
         delete({
@@ -256,8 +303,11 @@ fun Route.filesRoutes() {
             }
         }) {
             val path = call.request.queryParameters["path"].orEmpty()
-            FileManager.removeFile(path)
-            call.respond(Success("File removed"))
+            val mutex = getMutexFor(path)
+            mutex.withLock {
+                FileManager.removeFile(path)
+                call.respond(Success("File removed"))
+            }
         }
     }
 }
