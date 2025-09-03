@@ -7,23 +7,30 @@ import io.github.smiley4.ktoropenapi.post
 import io.github.smiley4.ktoropenapi.route
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 fun Route.adbRoutes() {
+    val adbRouteMutex = Mutex()
     route("/adb", {
         description = "ADB (Android Debug Bridge) management endpoints"
     }) {
         get("/start", {
             description = "Start the ADB server"
         }) {
-            AdbManager.start()
-            call.respond(Success(data = "ADB server started"))
+            adbRouteMutex.withLock {
+                AdbManager.start()
+                call.respond(Success(data = "ADB server started"))
+            }
         }
 
         get("/stop", {
             description = "Stop the ADB server"
         }) {
-            AdbManager.stop()
-            call.respond(Success(data = "ADB server stopped"))
+            adbRouteMutex.withLock {
+                AdbManager.stop()
+                call.respond(Success(data = "ADB server stopped"))
+            }
         }
 
         post("/key", {
