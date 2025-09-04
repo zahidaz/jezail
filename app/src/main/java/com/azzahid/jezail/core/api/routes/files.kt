@@ -205,7 +205,7 @@ fun Route.filesRoutes() {
             val sortedPaths = listOf(oldPath, newPath).sorted()
             val mutexes = sortedPaths.map { getMutexFor(it) }
 
-            mutexes.fold(Unit) { _, mutex -> mutex.withLock { } }
+            mutexes.fold(Unit) { _, mutex -> mutex.lock() }
 
             try {
                 FileManager.renameFile(oldPath, newPath)
