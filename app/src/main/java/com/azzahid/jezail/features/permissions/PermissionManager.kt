@@ -22,11 +22,13 @@ object PermissionManager {
                 )
             )
 
-            put(READ_PHONE_STATE,PermissionInfo(
-                displayName = "Read Phone State",
-                description = "Required for accessing cellular network status",
-                isRequired = true
-            ))
+            put(
+                READ_PHONE_STATE, PermissionInfo(
+                    displayName = "Read Phone State",
+                    description = "Required for accessing cellular network status",
+                    isRequired = true
+                )
+            )
         }
     }
 

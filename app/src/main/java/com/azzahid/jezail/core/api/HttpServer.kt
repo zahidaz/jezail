@@ -41,8 +41,6 @@ import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import org.slf4j.event.Level
@@ -134,7 +132,11 @@ fun Application.configureServer() {
     install(StatusPages) {
         exception<IllegalArgumentException> { call, cause ->
             call.respond(BadRequest, Failure(error = cause.message ?: "Invalid request"))
-            Log.w(TAG, "Bad Request (400) - IllegalArgumentException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}", cause)
+            Log.w(
+                TAG,
+                "Bad Request (400) - IllegalArgumentException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}",
+                cause
+            )
         }
 
         exception<IllegalStateException> { call, cause ->
@@ -142,17 +144,29 @@ fun Application.configureServer() {
                 Conflict,
                 Failure(error = cause.message ?: "Request could not be completed")
             )
-            Log.e(TAG, "Conflict (409) - IllegalStateException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}", cause)
+            Log.e(
+                TAG,
+                "Conflict (409) - IllegalStateException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}",
+                cause
+            )
         }
 
         exception<IllegalAccessException> { call, cause ->
             call.respond(BadRequest, Failure(error = cause.message ?: "Access denied"))
-            Log.w(TAG, "Bad Request (400) - IllegalAccessException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}", cause)
+            Log.w(
+                TAG,
+                "Bad Request (400) - IllegalAccessException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}",
+                cause
+            )
         }
 
         exception<SecurityException> { call, cause ->
             call.respond(BadRequest, Failure(error = cause.message ?: "Security error"))
-            Log.w(TAG, "Bad Request (400) - SecurityException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}", cause)
+            Log.w(
+                TAG,
+                "Bad Request (400) - SecurityException: ${call.request.httpMethod.value} ${call.request.path()} - ${cause.message}",
+                cause
+            )
         }
 
         exception<Throwable> { call, cause ->
@@ -172,7 +186,11 @@ fun Application.configureServer() {
                         }
                     ).toString())
             )
-            Log.e(TAG, "Internal Server Error (500): ${call.request.httpMethod.value} ${call.request.path()}", cause)
+            Log.e(
+                TAG,
+                "Internal Server Error (500): ${call.request.httpMethod.value} ${call.request.path()}",
+                cause
+            )
         }
 
         status(BadRequest) { call, status ->

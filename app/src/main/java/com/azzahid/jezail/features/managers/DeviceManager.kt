@@ -360,65 +360,79 @@ object DeviceManager {
         val arpRes = runCatching { Shell.cmd("cat /proc/net/arp").exec() }.getOrNull()
 
         return buildMap {
-            put("activeConnection", mapOf(
-                "hasInternet" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false),
-                "hasWifi" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false),
-                "hasCellular" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ?: false),
-                "hasEthernet" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ?: false),
-                "validated" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ?: false)
-            ))
-            put("wifi", mapOf(
-                "ssid" to wi?.ssid?.removeSurrounding("\""),
-                "bssid" to wi?.bssid?.takeIf { it != "02:00:00:00:00:00" },
-                "ipAddress" to if (SDK_INT >= Build.VERSION_CODES.S)
-                    lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress
-                else @Suppress("DEPRECATION")
-                wi?.ipAddress?.let { intToIp(it) },
-                "macAddress" to wi?.macAddress?.takeIf { it != "02:00:00:00:00:00" },
-                "networkId" to wi?.networkId,
-                "rssi" to wi?.rssi,
-                "linkSpeed" to wi?.linkSpeed,
-                "frequency" to wi?.frequency,
-                "txLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.txLinkSpeedMbps else null,
-                "rxLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.rxLinkSpeedMbps else null
-            ))
-            put("dhcp", if (SDK_INT >= Build.VERSION_CODES.S) {
-                mapOf(
-                    "ipAddress" to lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress,
-                    "gateway" to lp?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress,
+            put(
+                "activeConnection", mapOf(
+                    "hasInternet" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        ?: false),
+                    "hasWifi" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ?: false),
+                    "hasCellular" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        ?: false),
+                    "hasEthernet" to (nc?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                        ?: false),
+                    "validated" to (nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                        ?: false)
+                )
+            )
+            put(
+                "wifi", mapOf(
+                    "ssid" to wi?.ssid?.removeSurrounding("\""),
+                    "bssid" to wi?.bssid?.takeIf { it != "02:00:00:00:00:00" },
+                    "ipAddress" to if (SDK_INT >= Build.VERSION_CODES.S)
+                        lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress
+                    else @Suppress("DEPRECATION")
+                    wi?.ipAddress?.let { intToIp(it) },
+                    "macAddress" to wi?.macAddress?.takeIf { it != "02:00:00:00:00:00" },
+                    "networkId" to wi?.networkId,
+                    "rssi" to wi?.rssi,
+                    "linkSpeed" to wi?.linkSpeed,
+                    "frequency" to wi?.frequency,
+                    "txLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.txLinkSpeedMbps else null,
+                    "rxLinkSpeed" to if (SDK_INT >= Build.VERSION_CODES.Q) wi?.rxLinkSpeedMbps else null
+                )
+            )
+            put(
+                "dhcp", if (SDK_INT >= Build.VERSION_CODES.S) {
+                    mapOf(
+                        "ipAddress" to lp?.linkAddresses?.firstOrNull { !it.address.isLoopbackAddress }?.address?.hostAddress,
+                        "gateway" to lp?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress,
+                        "dnsServers" to lp?.dnsServers?.map { it.hostAddress },
+                        "domains" to lp?.domains,
+                        "mtu" to lp?.mtu
+                    )
+                } else {
+                    @Suppress("DEPRECATION") val di = wm.dhcpInfo
+                    mapOf(
+                        "ipAddress" to intToIp(di.ipAddress),
+                        "gateway" to intToIp(di.gateway),
+                        "netmask" to intToIp(di.netmask),
+                        "dns1" to intToIp(di.dns1),
+                        "dns2" to intToIp(di.dns2),
+                        "serverAddress" to intToIp(di.serverAddress),
+                        "leaseDuration" to di.leaseDuration
+                    )
+                }
+            )
+            put(
+                "linkProperties", mapOf(
+                    "interfaceName" to lp?.interfaceName,
+                    "linkAddresses" to lp?.linkAddresses?.map { it.toString() },
+                    "routes" to lp?.routes?.map { it.toString() },
                     "dnsServers" to lp?.dnsServers?.map { it.hostAddress },
-                    "domains" to lp?.domains,
-                    "mtu" to lp?.mtu
+                    "domains" to lp?.domains
                 )
-            } else {
-                @Suppress("DEPRECATION") val di = wm.dhcpInfo
-                mapOf(
-                    "ipAddress" to intToIp(di.ipAddress),
-                    "gateway" to intToIp(di.gateway),
-                    "netmask" to intToIp(di.netmask),
-                    "dns1" to intToIp(di.dns1),
-                    "dns2" to intToIp(di.dns2),
-                    "serverAddress" to intToIp(di.serverAddress),
-                    "leaseDuration" to di.leaseDuration
-                )
-            })
-            put("linkProperties", mapOf(
-                "interfaceName" to lp?.interfaceName,
-                "linkAddresses" to lp?.linkAddresses?.map { it.toString() },
-                "routes" to lp?.routes?.map { it.toString() },
-                "dnsServers" to lp?.dnsServers?.map { it.hostAddress },
-                "domains" to lp?.domains
-            ))
+            )
             if (checkSelfPermission(context, READ_PHONE_STATE) == PERMISSION_GRANTED) {
                 val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-                put("cellular", mapOf(
-                    "networkOperator" to tm.networkOperatorName,
-                    "networkType" to if (SDK_INT >= Build.VERSION_CODES.R) tm.dataNetworkType else tm.networkType,
-                    "phoneType" to tm.phoneType,
-                    "simState" to tm.simState,
-                    "isNetworkRoaming" to tm.isNetworkRoaming,
-                    "isDataEnabled" to if (SDK_INT >= Build.VERSION_CODES.O) tm.isDataEnabled else null
-                ))
+                put(
+                    "cellular", mapOf(
+                        "networkOperator" to tm.networkOperatorName,
+                        "networkType" to if (SDK_INT >= Build.VERSION_CODES.R) tm.dataNetworkType else tm.networkType,
+                        "phoneType" to tm.phoneType,
+                        "simState" to tm.simState,
+                        "isNetworkRoaming" to tm.isNetworkRoaming,
+                        "isDataEnabled" to if (SDK_INT >= Build.VERSION_CODES.O) tm.isDataEnabled else null
+                    )
+                )
             }
             put("interfaces", ifRes?.takeIf { it.isSuccess }?.out ?: emptyList<Any>())
             put("routes", rtRes?.takeIf { it.isSuccess }?.out ?: emptyList<Any>())

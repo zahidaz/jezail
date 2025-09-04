@@ -45,7 +45,7 @@ object AdbManager {
     }
 
     fun installKey(publicKey: String) {
-        require(publicKey.isNotBlank()){
+        require(publicKey.isNotBlank()) {
             "Public key cannot be blank"
         }
 

@@ -9,7 +9,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
-import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.O
 import android.os.IBinder
@@ -107,7 +106,7 @@ class HttpServerService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (SDK_INT >= O) {
             val channel = NotificationChannel(
                 CHANNEL_ID, "HTTP Server Service", NotificationManager.IMPORTANCE_LOW
             ).apply {

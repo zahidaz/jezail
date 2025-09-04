@@ -150,7 +150,7 @@ afterEvaluate {
     tasks.named("mergeReleaseAssets") {
         dependsOn(extractWebAssets)
     }
-    
+
     tasks.matching { it.name.contains("LintReportModel") }.configureEach {
         dependsOn(extractWebAssets)
     }

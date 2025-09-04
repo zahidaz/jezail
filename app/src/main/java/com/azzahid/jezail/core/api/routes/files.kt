@@ -1,6 +1,5 @@
 package com.azzahid.jezail.core.api.routes
 
-import android.util.Log
 import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.core.services.withRootFSFile
@@ -18,7 +17,6 @@ import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
-import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
 import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo

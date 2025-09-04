@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    private val _uiState = MutableStateFlow(ServerUiState(
-        serverStatus = HttpServerService.defaultServerStatus,
-        isRooted = false,
-        isAdbRunning = false,
-        adbVersion = "Unknown"
-    ))
+    private val _uiState = MutableStateFlow(
+        ServerUiState(
+            serverStatus = HttpServerService.defaultServerStatus,
+            isRooted = false,
+            isAdbRunning = false,
+            adbVersion = "Unknown"
+        )
+    )
     val uiState: StateFlow<ServerUiState> = _uiState.asStateFlow()
     private val handler = Handler(Looper.getMainLooper())
 

@@ -2,7 +2,6 @@ package com.azzahid.jezail
 
 import android.app.Application
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.util.Log
 import com.azzahid.jezail.core.services.RootFSService
 import com.topjohnwu.superuser.Shell

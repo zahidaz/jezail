@@ -16,12 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,13 +65,13 @@ fun MainScreen(
     permissionsViewModel: PermissionsViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         permissionsViewModel.refreshPermissions(context)
     }
-    
+
     LaunchedEffect(Unit) {
         permissionsViewModel.loadPermissions(context)
     }
@@ -116,7 +116,7 @@ fun MainScreen(
                     isAdbRunning = isAdbRunning
                 )
             }
-            
+
             item {
                 CompactServiceCard(
                     title = "HTTP Server",
@@ -129,7 +129,7 @@ fun MainScreen(
                     allowPortChange = !isServerRunning && isRooted
                 )
             }
-            
+
             item {
                 CompactServiceCard(
                     title = "ADB Daemon",
@@ -139,7 +139,7 @@ fun MainScreen(
                     onStop = if (isRooted) onStopAdb else null
                 )
             }
-            
+
             item {
                 AnimatedVisibility(
                     visible = !isRooted,
@@ -149,7 +149,7 @@ fun MainScreen(
                     CompactWarningCard()
                 }
             }
-            
+
             item {
                 Text(
                     text = "App Permissions",
@@ -158,14 +158,14 @@ fun MainScreen(
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            
+
             item {
                 PermissionsSummaryCard(
                     permissions = permissionsViewModel.permissionsState,
                     onRefresh = { permissionsViewModel.refreshPermissions(context) }
                 )
             }
-            
+
             if (permissionsViewModel.permissionsState.isEmpty()) {
                 item {
                     Card(
@@ -210,7 +210,7 @@ fun PortChangeDialog(
 ) {
     var portText by remember { mutableStateOf(currentPort.toString()) }
     var isError by remember { mutableStateOf(false) }
-    
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -241,15 +241,19 @@ fun PortChangeDialog(
                     placeholder = { Text("e.g., 8080") },
                     isError = isError,
                     supportingText = if (isError) {
-                        { Text(
-                            text = "Port must be between 1024 and 65535",
-                            color = MaterialTheme.colorScheme.error
-                        ) }
+                        {
+                            Text(
+                                text = "Port must be between 1024 and 65535",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     } else {
-                        { Text(
-                            text = "Current: $currentPort",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        ) }
+                        {
+                            Text(
+                                text = "Current: $currentPort",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
@@ -312,7 +316,7 @@ fun StatusOverviewCard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -349,7 +353,7 @@ fun StatusIndicator(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         val statusText = if (isActive) "Active" else "Inactive"
-        
+
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
@@ -362,7 +366,7 @@ fun StatusIndicator(
                 color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        
+
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -404,7 +408,7 @@ fun CompactServiceCard(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-                
+
                 Surface(
                     shape = RoundedCornerShape(16.dp),
                     color = if (isRunning) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
@@ -418,7 +422,7 @@ fun CompactServiceCard(
                     )
                 }
             }
-            
+
             if (isRunning && connectionInfo != null) {
                 Spacer(Modifier.height(12.dp))
                 Surface(
@@ -461,7 +465,7 @@ fun CompactServiceCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        
+
                         if (allowPortChange) {
                             FilledTonalButton(
                                 onClick = { showPortDialog = true },
@@ -483,9 +487,9 @@ fun CompactServiceCard(
                     }
                 }
             }
-            
+
             Spacer(Modifier.height(20.dp))
-            
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -502,7 +506,7 @@ fun CompactServiceCard(
                         )
                     }
                 }
-                
+
                 if (onStop != null && isRunning) {
                     OutlinedButton(
                         onClick = onStop,
@@ -516,7 +520,7 @@ fun CompactServiceCard(
                         )
                     }
                 }
-                
+
                 if (onStart == null && onStop == null) {
                     Text(
                         text = "Root access required",
@@ -528,7 +532,7 @@ fun CompactServiceCard(
             }
         }
     }
-    
+
     if (showPortDialog && onPortChange != null && port != null) {
         PortChangeDialog(
             currentPort = port,
@@ -577,7 +581,7 @@ fun PermissionsSummaryCard(
     val grantedCount = permissions.count { it.isGranted }
     val totalCount = permissions.size
     val requiredMissing = permissions.count { !it.isGranted && it.isRequired }
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -599,7 +603,7 @@ fun PermissionsSummaryCard(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-                
+
                 TextButton(
                     onClick = onRefresh,
                     modifier = Modifier.padding(0.dp)
@@ -607,12 +611,12 @@ fun PermissionsSummaryCard(
                     Text("Refresh", fontSize = 12.sp)
                 }
             }
-            
+
             Text(
                 text = "$grantedCount of $totalCount permissions granted",
                 style = MaterialTheme.typography.bodySmall
             )
-            
+
             if (requiredMissing > 0) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -651,7 +655,7 @@ fun CompactPermissionCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -668,7 +672,7 @@ fun CompactPermissionCard(
                             color = if (permission.isGranted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
-                    
+
                     if (!permission.isGranted) {
                         Button(
                             onClick = onRequestPermission,

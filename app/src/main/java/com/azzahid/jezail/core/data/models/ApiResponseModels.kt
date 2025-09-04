@@ -8,7 +8,6 @@ import io.ktor.http.fromFileExtension
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.header
 import io.ktor.server.response.respondBytes
-import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
