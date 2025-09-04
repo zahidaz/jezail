@@ -1,5 +1,6 @@
 package com.azzahid.jezail.core.utils
 
+import android.util.Log
 import android.webkit.MimeTypeMap
 import com.azzahid.jezail.core.services.withRootFS
 import com.topjohnwu.superuser.Shell
@@ -16,8 +17,6 @@ import java.io.FileOutputStream
 import java.net.URLConnection
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import kotlin.text.ifEmpty
-import kotlin.text.lowercase
 
 
 suspend fun getMimeType(path: String) = withRootFS { fs ->
@@ -26,19 +25,17 @@ suspend fun getMimeType(path: String) = withRootFS { fs ->
     }.lowercase()
 
     extension.takeIf { it.isNotEmpty() }
-        ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it) }
-        ?: runCatching {
-            fs.getFile(path).takeIf { it.exists() && it.isFile }
-                ?.newInputStream()?.use { input ->
-                    ByteArray(512).let { buffer ->
-                        input.read(buffer).takeIf { it > 0 }?.let { bytesRead ->
-                            URLConnection.guessContentTypeFromStream(
-                                ByteArrayInputStream(buffer, 0, bytesRead)
-                            )
-                        }
-                    }
+        ?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it) } ?: runCatching {
+        fs.getFile(path).takeIf { it.exists() && it.isFile }?.newInputStream()?.use { input ->
+            ByteArray(512).let { buffer ->
+                input.read(buffer).takeIf { it > 0 }?.let { bytesRead ->
+                    URLConnection.guessContentTypeFromStream(
+                        ByteArrayInputStream(buffer, 0, bytesRead)
+                    )
                 }
-        }.getOrNull()
+            }
+        }
+    }.getOrNull()
 }
 
 fun copyFileContent(source: ExtendedFile, dest: ExtendedFile, overwrite: Boolean) {
@@ -58,9 +55,7 @@ fun copyFileContent(source: ExtendedFile, dest: ExtendedFile, overwrite: Boolean
 }
 
 fun copyDirectory(
-    sourceDir: ExtendedFile,
-    destDir: ExtendedFile,
-    overwrite: Boolean
+    sourceDir: ExtendedFile, destDir: ExtendedFile, overwrite: Boolean
 ) {
     if (destDir.exists() && !overwrite) {
         error("Destination directory exists: ${destDir.absolutePath}")
@@ -118,14 +113,10 @@ fun validateParentDirectory(parent: ExtendedFile?) {
 }
 
 fun isValidPermissions(permissions: String) =
-    permissions.matches(Regex("^[0-7]{3,4}$")) ||
-            permissions.matches(Regex("^[ugoa]*[+-=][rwxXstugo]*$"))
+    permissions.matches(Regex("^[0-7]{3,4}$")) || permissions.matches(Regex("^[ugoa]*[+-=][rwxXstugo]*$"))
 
 suspend fun executeFileOperation(
-    path: String,
-    value: String,
-    command: String,
-    operation: String
+    path: String, value: String, command: String, operation: String
 ) = withRootFS { fs ->
     require(path.isNotBlank() && value.isNotBlank()) { "Path and $operation value cannot be empty" }
 
@@ -136,12 +127,11 @@ suspend fun executeFileOperation(
     executeShellCommand("$command '$value' '$path'", operation)
 }
 
-suspend fun executeShellCommand(command: String, operation: String) =
-    withContext(Dispatchers.IO) {
-        Shell.cmd(command).exec().let { result ->
-            require(result.isSuccess) { "Failed to $operation: ${result.err.joinToString()}" }
-        }
+suspend fun executeShellCommand(command: String, operation: String) = withContext(Dispatchers.IO) {
+    Shell.cmd(command).exec().let { result ->
+        require(result.isSuccess) { "Failed to $operation: ${result.err.joinToString()}" }
     }
+}
 
 
 suspend fun getPermissions(path: String) = withContext(Dispatchers.IO) {
@@ -167,28 +157,27 @@ suspend fun getOwnership(path: String) = withContext(Dispatchers.IO) {
 fun zipDirectory(
     sourceDir: File,
     zipFileName: String = sourceDir.name
-): File? = runCatching {
+): File {
     require(sourceDir.exists() && sourceDir.isDirectory) {
         "Source must be an existing directory"
     }
-
-    val zipFile = File(sourceDir.parent, "$zipFileName.zip")
-
-    ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
-        sourceDir.walkTopDown()
-            .filter { it.isFile }
-            .forEach { file ->
+    val name = zipFileName.removeSuffix(".zip") + ".zip"
+    val target = File(sourceDir.parentFile, name)
+    return target.also {
+        ZipOutputStream(BufferedOutputStream(FileOutputStream(target))).use { zos ->
+            sourceDir.walkTopDown().filter { it.isFile }.forEach { file ->
                 val relativePath = file.relativeTo(sourceDir).path
+                Log.d("zipDirectory", "Zipping file: $relativePath")
                 zos.putNextEntry(ZipEntry(relativePath))
                 file.inputStream().buffered().use { input ->
                     input.copyTo(zos)
                 }
                 zos.closeEntry()
             }
+        }
     }
+}
 
-    zipFile
-}.getOrNull()
 
 fun ExtendedFile.moveTo(destination: File): Boolean = runCatching {
     destination.parentFile?.mkdirs()

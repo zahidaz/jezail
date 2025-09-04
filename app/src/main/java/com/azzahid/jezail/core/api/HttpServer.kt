@@ -124,6 +124,7 @@ fun Application.configureServer() {
         allowMethod(HttpMethod.Options)
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
+        exposeHeader(HttpHeaders.ContentDisposition)
         allowCredentials = true
     }
 

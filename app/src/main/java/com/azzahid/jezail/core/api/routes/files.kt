@@ -1,20 +1,23 @@
 package com.azzahid.jezail.core.api.routes
 
+import android.util.Log
 import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.data.models.Success
-import com.azzahid.jezail.features.managers.FileManager
 import com.azzahid.jezail.core.services.withRootFSFile
 import com.azzahid.jezail.core.utils.zipDirectory
+import com.azzahid.jezail.features.managers.FileManager
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
 import io.github.smiley4.ktoropenapi.route
+import io.ktor.http.ContentType
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
 import io.ktor.utils.io.jvm.javaio.copyTo
@@ -124,39 +127,42 @@ fun Route.filesRoutes() {
             val mutexes = sortedPaths.map { getMutexFor(it) }
 
             mutexes.fold(Unit) { _, mutex -> mutex.lock() }
+            val uuid = UUID.randomUUID().toString()
+            val downloadDir =
+                File(JezailApp.appContext.getExternalFilesDir(null), "download/$uuid")
+            downloadDir.mkdirs()
 
             try {
-                val uuid = UUID.randomUUID().toString()
-                val downloadDir =
-                    File(JezailApp.appContext.getExternalFilesDir(null), "download/$uuid")
-                downloadDir.mkdirs()
 
                 srcPaths.forEach { srcPath ->
-                    withRootFSFile(srcPath) { srcFile ->
-                        val destFile = File(downloadDir, srcFile.name)
-                        if (srcFile.isDirectory) {
-                            srcFile.copyRecursively(destFile, overwrite = true)
-                        } else {
-                            srcFile.copyTo(destFile, overwrite = true)
-                        }
+                    withRootFSFile(srcPath) { src ->
+                        val target = File(downloadDir, src.name)
+                        if (src.isDirectory) src.copyRecursively(
+                            target, overwrite = true
+                        ) else src.copyTo(target, overwrite = true)
                     }
                 }
 
-                val downloadableFile =
-                    if (srcPaths.size == 1 && withRootFSFile(srcPaths.first()) { it.isFile }) {
-                        File(downloadDir, File(srcPaths.first()).name)
-                    } else {
-                        zipDirectory(downloadDir, uuid) ?: throw Exception("Failed to zip files")
-                    }
+                val name = if (srcPaths.size > 1) uuid else {
+                    File(srcPaths.first()).name.removePrefix(".")
+                }
+
+                val d = if (srcPaths.size == 1 && withRootFSFile(srcPaths.first()) { it.isFile }) {
+                    File(downloadDir, name)
+                } else {
+                    zipDirectory(downloadDir, name)
+                }
+
 
                 call.response.header(
-                    "Content-Disposition",
-                    "attachment; filename=\"${downloadableFile.name}.${downloadableFile.extension}\""
+                    "Content-Disposition", "attachment; filename='${d.name}'"
                 )
-                call.respondFile(downloadableFile)
-                downloadDir.deleteRecursively()
+                val contentType = ContentType.Application.OctetStream
+                call.respondBytes(d.readBytes(), contentType)
+                d.deleteRecursively()
             } finally {
                 mutexes.reversed().forEach { it.unlock() }
+                downloadDir.deleteRecursively()
             }
         }
 
