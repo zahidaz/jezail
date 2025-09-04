@@ -46,7 +46,12 @@ object FridaManager {
 
     fun getCurrentVersion(): String? {
         return runCatching {
-            Shell.cmd("$fridaBinaryPath --version").exec().out.joinToString { it.trim() }
+            val result = Shell.cmd("$fridaBinaryPath --version").exec()
+            if (result.isSuccess) {
+                result.out.firstOrNull()?.trim()
+            } else {
+                null
+            }
         }.getOrNull()
     }
 
@@ -70,6 +75,8 @@ object FridaManager {
                     input.copyTo(output)
                 }
             }
+
+            targetFile.setExecutable(true, false)
         }
 
 
@@ -120,17 +127,29 @@ object FridaManager {
     )
 
     fun getInfo(): Map<String, Any> = buildMap {
-        val current = getCurrentVersion()
-        put("currentVersion", current ?: "not installed")
+        val currentVersion = getCurrentVersion()
+
+        if (currentVersion != null) {
+            put("currentVersion", currentVersion)
+            put("installPath", fridaBinaryPath.absolutePath)
+        } else {
+            put("currentVersion", "not installed")
+            put("installPath", "not installed")
+        }
+
         runCatching {
             val latest = fetchLatestVersion()
             put("latestVersion", latest)
-            put("needsUpdate", current != null && current != latest)
+            put("needsUpdate", currentVersion != null && currentVersion != latest)
         }.getOrElse {
             put("latestVersion", it.message ?: "Failed to fetch latest version")
             put("needsUpdate", false)
         }
-        put("installPath", current?.let { fridaBinaryPath.absolutePath } ?: "not installed")
+
+        put("port", FRIDA_PORT)
+        put("abi", abi)
+
     }
+
 
 }
