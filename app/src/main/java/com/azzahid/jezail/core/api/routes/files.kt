@@ -20,6 +20,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
+import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -47,7 +48,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             call.respond(Success(FileManager.getFileInfo(path)))
         }
 
@@ -73,7 +74,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val content = FileManager.readFile(path)
             call.respond(Success(mapOf("content" to content)))
         }
@@ -90,7 +91,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val destPath = call.request.queryParameters["path"].orEmpty()
+            val destPath = call.request.queryParameters.getOrFail("path")
             require(destPath.isNotBlank()) { "Destination path is required" }
 
             val mutex = getMutexFor(destPath)
@@ -178,7 +179,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
                 val content = call.receiveText()
@@ -200,8 +201,8 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val oldPath = call.request.queryParameters["oldPath"].orEmpty()
-            val newPath = call.request.queryParameters["newPath"].orEmpty()
+            val oldPath = call.request.queryParameters.getOrFail("oldPath")
+            val newPath = call.request.queryParameters.getOrFail("newPath")
 
             val sortedPaths = listOf(oldPath, newPath).sorted()
             val mutexes = sortedPaths.map { getMutexFor(it) }
@@ -225,7 +226,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
                 FileManager.createDirectory(path)
@@ -246,7 +247,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
                 val perm = call.request.queryParameters["permissions"].orEmpty()
@@ -268,10 +269,10 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
-                val owner = call.request.queryParameters["owner"].orEmpty()
+                val owner = call.request.queryParameters.getOrFail("owner")
                 FileManager.changeOwnership(path, owner)
                 call.respond(Success("Ownership changed"))
             }
@@ -290,10 +291,10 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
-                val group = call.request.queryParameters["group"].orEmpty()
+                val group = call.request.queryParameters.getOrFail("group")
                 FileManager.changeGroup(path, group)
                 call.respond(Success("Group changed"))
             }
@@ -308,7 +309,7 @@ fun Route.filesRoutes() {
                 }
             }
         }) {
-            val path = call.request.queryParameters["path"].orEmpty()
+            val path = call.request.queryParameters.getOrFail("path")
             val mutex = getMutexFor(path)
             mutex.withLock {
                 FileManager.removeFile(path)
