@@ -1,7 +1,7 @@
 <div align="center">
   <br>
   
-  <img src="docs/assets/hero.png" alt="Jezail hero" width="70%">
+  <img src="docs/assets/hero.png" alt="Jezail hero" width="90%">
 
   <br>
   <br>
