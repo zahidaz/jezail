@@ -1,11 +1,9 @@
 <div align="center">
   <br>
-  <img src="https://raw.githubusercontent.com/zahidaz/jezail/refs/heads/main/docs/assets/crosshair_logo.svg" alt="Jezail Logo"vertical-align: middle; margin-right: 20px;"/>
-  <h1>JEZAIL</h1>
-  <br>
   
-  <strong>Make your Android independent</strong>
+  <img src="docs/assets/hero.png" alt="Jezail hero" width="70%">
 
+  <br>
   <br>
 
 <!-- ![Release](https://img.shields.io/github/v/release/zahidaz/jezail?style=flat-square) -->
