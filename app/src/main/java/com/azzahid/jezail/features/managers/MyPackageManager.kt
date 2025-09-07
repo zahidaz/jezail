@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.data.models.SimplePackageInfo
-import com.azzahid.jezail.core.data.models.toSimplePackageInfo
 import com.azzahid.jezail.core.utils.DrawableEncoder
 import com.google.gson.Gson
 import com.topjohnwu.superuser.Shell
@@ -19,7 +18,24 @@ import java.security.MessageDigest
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-object PackageManager {
+fun PackageInfo.toSimplePackageInfo(
+    pm: PackageManager,
+    context: Context,
+    drawableEncoder: DrawableEncoder
+): SimplePackageInfo? {
+    val app = applicationInfo ?: return null
+    return SimplePackageInfo(
+        packageName = packageName,
+        name = app.nonLocalizedLabel?.toString() ?: pm.getApplicationLabel(app).toString(),
+        icon = drawableEncoder.encodeDrawableToBase64(pm.getApplicationIcon(app)),
+        isRunning = MyPackageManager.isAppRunning(packageName, context),
+        canLaunch = pm.getLaunchIntentForPackage(packageName) != null,
+        isSystemApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+        isUpdatedSystemApp = (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+    )
+}
+
+object MyPackageManager {
 
     private const val TAG = "AppManager"
     private val drawableEncoder = DrawableEncoder()
