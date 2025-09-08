@@ -10,6 +10,7 @@ import com.azzahid.jezail.core.data.models.AssetsResourceProvider
 import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.core.data.models.respondAsset
+import com.azzahid.jezail.core.data.models.respondAssetNoCache
 import com.azzahid.jezail.core.utils.AnySerializer
 import com.azzahid.jezail.core.utils.RoutingNodeSerializer
 import io.github.smiley4.ktoropenapi.OpenApi
@@ -102,7 +103,7 @@ fun Application.configureRouting() {
             val path = call.parameters.getAll("file")?.joinToString("/")
             if (path == null) call.respond(NotFound)
             val resource = webFiles.getResource(path!!)
-            if (resource != null) call.respondAsset(resource)
+            if (resource != null) call.respondAssetNoCache(resource)
             else call.respond(NotFound)
         }
 
