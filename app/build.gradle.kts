@@ -20,7 +20,7 @@ android {
         applicationId = "com.azzahid.jezail"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
+        versionCode = 4
         versionName = "1.0.$versionCode"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
