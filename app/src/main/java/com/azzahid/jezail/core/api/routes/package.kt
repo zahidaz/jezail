@@ -1,15 +1,12 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
-import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.MyPackageManager
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
 import io.github.smiley4.ktoropenapi.route
-import io.ktor.http.HttpStatusCode.Companion.BadRequest
-import io.ktor.http.HttpStatusCode.Companion.InternalServerError
 import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
@@ -20,7 +17,6 @@ import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo
 import java.io.File
 
-//curl -X POST "http://localhost:8080/api/package/com.azzahid.jezail/permissions/revoke?permission=android.permission.POST_NOTIFICATIONS"
 fun Route.packageRoutes() {
     route("/package", {
         description = "Android package management endpoints"
@@ -28,33 +24,19 @@ fun Route.packageRoutes() {
         get("/list", {
             description = "Get all installed applications"
         }) {
-            try {
-                call.respond(Success(MyPackageManager.getAllInstalledApps()))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to get installed apps")
-                )
-            }
+            call.respond(Success(MyPackageManager.getAllInstalledApps()))
         }
 
         get("/list/user", {
             description = "Get user-installed applications"
         }) {
-            try {
-                call.respond(Success(MyPackageManager.getUserInstalledApps()))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get user apps"))
-            }
+            call.respond(Success(MyPackageManager.getUserInstalledApps()))
         }
 
         get("/list/system", {
             description = "Get system-installed applications"
         }) {
-            try {
-                call.respond(Success(MyPackageManager.getSystemInstalledApps()))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get system apps"))
-            }
+            call.respond(Success(MyPackageManager.getSystemInstalledApps()))
         }
 
         get("/{package}", {
@@ -65,14 +47,8 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                call.respond(Success(MyPackageManager.getAppSimpleDetails(pkg)))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get app details"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            call.respond(Success(MyPackageManager.getAppSimpleDetails(pkg)))
         }
 
         get("/{package}/details", {
@@ -83,14 +59,8 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                call.respond(Success(MyPackageManager.getAppDetails(pkg)))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get app details"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            call.respond(Success(MyPackageManager.getAppDetails(pkg)))
         }
 
         get("/{package}/launch", {
@@ -105,16 +75,10 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val activity = call.request.queryParameters["activity"]
-                MyPackageManager.tryLaunchApp(pkg, activity)
-                call.respond(Success("App launched successfully"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid parameters"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to launch app"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            val activity = call.request.queryParameters["activity"]
+            MyPackageManager.tryLaunchApp(pkg, activity)
+            call.respond(Success("App launched successfully"))
         }
 
         get("/{package}/stop", {
@@ -125,15 +89,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                MyPackageManager.tryStopApp(pkg)
-                call.respond(Success("App stopped successfully"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to stop app"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            MyPackageManager.tryStopApp(pkg)
+            call.respond(Success("App stopped successfully"))
         }
 
         delete("/{package}", {
@@ -144,15 +102,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                MyPackageManager.tryUninstallApp(pkg)
-                call.respond(Success("App uninstalled successfully"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to uninstall app"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            MyPackageManager.tryUninstallApp(pkg)
+            call.respond(Success("App uninstalled successfully"))
         }
 
         post("/install", {
@@ -172,43 +124,34 @@ fun Route.packageRoutes() {
             }
         }) {
             var tempFile: File? = null
-            try {
-                val forceInstall =
-                    call.request.queryParameters["forceInstall"]?.toBoolean() ?: false
-                val grantPermissions =
-                    call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
+            val forceInstall = call.request.queryParameters["forceInstall"]?.toBoolean() ?: false
+            val grantPermissions = call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
 
-                tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
-                val multipart = call.receiveMultipart()
+            tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
+            val multipart = call.receiveMultipart()
 
-                var fileReceived = false
-                multipart.forEachPart { part ->
-                    if (part is PartData.FileItem) {
-                        val input = part.provider()
-                        tempFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                        fileReceived = true
-                        part.dispose()
+            var fileReceived = false
+            multipart.forEachPart { part ->
+                if (part is PartData.FileItem) {
+                    val input = part.provider()
+                    tempFile.outputStream().use { output ->
+                        input.copyTo(output)
                     }
+                    fileReceived = true
+                    part.dispose()
                 }
-
-                require(fileReceived) { "No APK file provided in the request" }
-
-                MyPackageManager.tryInstallApp(
-                    apk = tempFile,
-                    forceInstall = forceInstall,
-                    grantPermissions = grantPermissions,
-                )
-
-                call.respond(Success("App installed successfully"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid request parameters"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to install app"))
-            } finally {
-                tempFile?.delete()
             }
+
+            require(fileReceived) { "No APK file provided in the request" }
+
+            MyPackageManager.tryInstallApp(
+                apk = tempFile,
+                forceInstall = forceInstall,
+                grantPermissions = grantPermissions,
+            )
+
+            tempFile?.delete()
+            call.respond(Success("App installed successfully"))
         }
 
         post("/{package}/permissions/grant", {
@@ -223,20 +166,12 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val permission = call.request.queryParameters["permission"]
-                    ?: throw IllegalArgumentException("Permission parameter is required")
+            val pkg = call.parameters.getOrFail("package")
+            val permission = call.request.queryParameters["permission"]
+                ?: throw IllegalArgumentException("Permission parameter is required")
 
-                MyPackageManager.grantPermission(pkg, permission)
-                call.respond(Success("Permission '$permission' granted to '$pkg'"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid parameters"))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to grant permission")
-                )
-            }
+            MyPackageManager.grantPermission(pkg, permission)
+            call.respond(Success("Permission '$permission' granted to '$pkg'"))
         }
 
         post("/{package}/permissions/revoke", {
@@ -251,20 +186,12 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val permission = call.request.queryParameters["permission"]
-                    ?: throw IllegalArgumentException("Permission parameter is required")
+            val pkg = call.parameters.getOrFail("package")
+            val permission = call.request.queryParameters["permission"]
+                ?: throw IllegalArgumentException("Permission parameter is required")
 
-                MyPackageManager.revokePermission(pkg, permission)
-                call.respond(Success("Permission '$permission' revoked from '$pkg'"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid parameters"))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to revoke permission")
-                )
-            }
+            MyPackageManager.revokePermission(pkg, permission)
+            call.respond(Success("Permission '$permission' revoked from '$pkg'"))
         }
 
         get("/{package}/permissions", {
@@ -275,15 +202,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val granted = MyPackageManager.getGrantedPermissions(pkg)
-                call.respond(Success(mapOf("granted" to granted)))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get permissions"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            val granted = MyPackageManager.getGrantedPermissions(pkg)
+            call.respond(Success(mapOf("granted" to granted)))
         }
 
         get("/{package}/permissions/all", {
@@ -294,23 +215,18 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val all = MyPackageManager.getAllPermissions(pkg)
-                val granted = MyPackageManager.getGrantedPermissions(pkg)
-                call.respond(
-                    Success(
-                        mapOf(
-                            "all" to all,
-                            "granted" to granted,
-                            "denied" to all.filterNot { it in granted })
+            val pkg = call.parameters.getOrFail("package")
+            val all = MyPackageManager.getAllPermissions(pkg)
+            val granted = MyPackageManager.getGrantedPermissions(pkg)
+            call.respond(
+                Success(
+                    mapOf(
+                        "all" to all,
+                        "granted" to granted,
+                        "denied" to all.filterNot { it in granted }
                     )
                 )
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to get permissions"))
-            }
+            )
         }
 
         get("/{package}/running", {
@@ -321,17 +237,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val isRunning = MyPackageManager.isAppRunning(pkg)
-                call.respond(Success(mapOf("running" to isRunning)))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to check app status")
-                )
-            }
+            val pkg = call.parameters.getOrFail("package")
+            val isRunning = MyPackageManager.isAppRunning(pkg)
+            call.respond(Success(mapOf("running" to isRunning)))
         }
 
         get("/{package}/process-info", {
@@ -342,17 +250,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val processInfo = MyPackageManager.getProcessInfo(pkg)
-                call.respond(Success(processInfo))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to get process info")
-                )
-            }
+            val pkg = call.parameters.getOrFail("package")
+            val processInfo = MyPackageManager.getProcessInfo(pkg)
+            call.respond(Success(processInfo))
         }
 
         post("/{package}/clear-data", {
@@ -363,15 +263,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                MyPackageManager.clearAppData(pkg)
-                call.respond(Success("Data cleared for '$pkg'"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to clear app data"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            MyPackageManager.clearAppData(pkg)
+            call.respond(Success("Data cleared for '$pkg'"))
         }
 
         post("/{package}/clear-cache", {
@@ -382,15 +276,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                MyPackageManager.clearAppCache(pkg)
-                call.respond(Success("Cache cleared for '$pkg'"))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(InternalServerError, Failure(e.message ?: "Failed to clear app cache"))
-            }
+            val pkg = call.parameters.getOrFail("package")
+            MyPackageManager.clearAppCache(pkg)
+            call.respond(Success("Cache cleared for '$pkg'"))
         }
 
         get("/{package}/signatures", {
@@ -401,17 +289,9 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            try {
-                val pkg = call.parameters.getOrFail("package")
-                val signatures = MyPackageManager.getAppSignatures(pkg)
-                call.respond(Success(signatures))
-            } catch (e: IllegalArgumentException) {
-                call.respond(BadRequest, Failure(e.message ?: "Invalid package parameter"))
-            } catch (e: Exception) {
-                call.respond(
-                    InternalServerError, Failure(e.message ?: "Failed to get app signatures")
-                )
-            }
+            val pkg = call.parameters.getOrFail("package")
+            val signatures = MyPackageManager.getAppSignatures(pkg)
+            call.respond(Success(signatures))
         }
 
         get("/{package}/debuggable", {
