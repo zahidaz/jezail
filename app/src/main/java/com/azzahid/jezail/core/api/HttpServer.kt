@@ -1,5 +1,6 @@
 package com.azzahid.jezail.core.api
 
+import android.os.Build
 import android.util.Log
 import com.azzahid.jezail.core.api.routes.adbRoutes
 import com.azzahid.jezail.core.api.routes.deviceRoutes
@@ -19,6 +20,7 @@ import io.github.smiley4.ktoropenapi.openApi
 import io.github.smiley4.ktorswaggerui.swaggerUI
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpStatusCode.Companion.BadRequest
 import io.ktor.http.HttpStatusCode.Companion.Conflict
 import io.ktor.http.HttpStatusCode.Companion.InternalServerError
@@ -39,6 +41,7 @@ import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondRedirect
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
@@ -79,12 +82,30 @@ fun Application.configureRouting() {
 
 
             route("json") {
-                openApi()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    openApi()
+                } else {
+                    get {
+                        call.respondText(
+                            "OpenAPI documentation requires Android 12 (API 31) or higher",
+                            status = HttpStatusCode.NotImplemented
+                        )
+                    }
+                }
             }
 
             route("/swagger") {
-                swaggerUI("/api/json") {
-                    // Add configuration for this Swagger UI "instance" here.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    swaggerUI("/api/json") {
+                        // Add configuration for this Swagger UI "instance" here.
+                    }
+                } else {
+                    get {
+                        call.respondText(
+                            "Swagger UI requires Android 12 (API 31) or higher",
+                            status = HttpStatusCode.NotImplemented
+                        )
+                    }
                 }
             }
 
@@ -127,8 +148,9 @@ fun Application.configureServer() {
         allowCredentials = true
     }
 
-    install(OpenApi)
-
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        install(OpenApi)
+    }
 
     install(StatusPages) {
         exception<IllegalArgumentException> { call, cause ->
