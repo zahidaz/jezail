@@ -10,6 +10,16 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("kotlinx-serialization")
     id("de.undercouch.download") version "5.6.0"
+
+ // Firebase plugins will be applied conditionally below
+}
+
+val googleServicesFile = File(project.projectDir, "google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+} else {
+    logger.warn("ERROR: google-services.json not found. Skipping Firebase plugins.")
 }
 
 android {
