@@ -125,7 +125,8 @@ fun Route.packageRoutes() {
         }) {
             var tempFile: File? = null
             val forceInstall = call.request.queryParameters["forceInstall"]?.toBoolean() ?: false
-            val grantPermissions = call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
+            val grantPermissions =
+                call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
 
             tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
             val multipart = call.receiveMultipart()

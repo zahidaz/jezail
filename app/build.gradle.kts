@@ -11,7 +11,7 @@ plugins {
     id("kotlinx-serialization")
     id("de.undercouch.download") version "5.6.0"
 
- // Firebase plugins will be applied conditionally below
+    // Firebase plugins will be applied conditionally below
 }
 
 val googleServicesFile = File(project.projectDir, "google-services.json")

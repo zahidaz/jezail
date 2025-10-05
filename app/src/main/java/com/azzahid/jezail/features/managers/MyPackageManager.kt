@@ -66,7 +66,10 @@ object MyPackageManager {
         getInstalledApps(context, includeSystem = true)
 
     fun getAllInstalledApps(context: Context = JezailApp.appContext): List<SimplePackageInfo> =
-        getInstalledApps(context, includeSystem = false) + getInstalledApps(context, includeSystem = true)
+        getInstalledApps(context, includeSystem = false) + getInstalledApps(
+            context,
+            includeSystem = true
+        )
 
     fun getAppDetails(
         packageName: String,
@@ -178,7 +181,8 @@ object MyPackageManager {
         }
 
         check(hasSuccess) {
-            val errorMessage = (result.err + result.out).joinToString("\n").ifEmpty { "Unknown error" }
+            val errorMessage =
+                (result.err + result.out).joinToString("\n").ifEmpty { "Unknown error" }
             "Failed to uninstall '$packageName': $errorMessage"
         }
     }
@@ -232,6 +236,7 @@ object MyPackageManager {
         val isDangerous = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ->
                 permissionInfo.protection == PermissionInfo.PROTECTION_DANGEROUS
+
             else ->
                 permissionInfo.protectionLevel and PermissionInfo.PROTECTION_DANGEROUS != 0
         }
@@ -275,6 +280,7 @@ object MyPackageManager {
         val isDangerous = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ->
                 permissionInfo.protection == PermissionInfo.PROTECTION_DANGEROUS
+
             else ->
                 permissionInfo.protectionLevel and PermissionInfo.PROTECTION_DANGEROUS != 0
         }
@@ -420,7 +426,8 @@ object MyPackageManager {
         val specificResult = Shell.cmd("rm -rf /data/data/$packageName/cache/*").exec()
 
         check(result.isSuccess || specificResult.isSuccess) {
-            val errorMessage = (result.err + specificResult.err).joinToString("\n").ifEmpty { "Unknown error" }
+            val errorMessage =
+                (result.err + specificResult.err).joinToString("\n").ifEmpty { "Unknown error" }
             "Failed to clear cache for '$packageName': $errorMessage"
         }
     }
@@ -439,9 +446,13 @@ object MyPackageManager {
                         PackageManager.GET_SIGNING_CERTIFICATES
                     )
                 }
+
                 else -> {
                     @Suppress("DEPRECATION")
-                    context.packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+                    context.packageManager.getPackageInfo(
+                        packageName,
+                        PackageManager.GET_SIGNATURES
+                    )
                 }
             }
         }.getOrElse {
@@ -463,6 +474,7 @@ object MyPackageManager {
                     }
                 }
             }
+
             else -> {
                 @Suppress("DEPRECATION")
                 packageInfo.signatures?.forEach { signature ->

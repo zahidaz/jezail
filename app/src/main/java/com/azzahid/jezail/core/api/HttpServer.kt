@@ -10,7 +10,6 @@ import com.azzahid.jezail.core.api.routes.packageRoutes
 import com.azzahid.jezail.core.data.models.AssetsResourceProvider
 import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
-import com.azzahid.jezail.core.data.models.respondAsset
 import com.azzahid.jezail.core.data.models.respondAssetNoCache
 import com.azzahid.jezail.core.utils.AnySerializer
 import com.azzahid.jezail.core.utils.RoutingNodeSerializer
