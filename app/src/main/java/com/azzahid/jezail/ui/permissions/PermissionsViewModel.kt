@@ -13,28 +13,12 @@ class PermissionsViewModel : ViewModel() {
     var permissionsState by mutableStateOf<List<PermissionStatus>>(emptyList())
         private set
 
-    var showPermissionDialog by mutableStateOf(false)
-        private set
-
-    var selectedPermission by mutableStateOf<PermissionStatus?>(null)
-        private set
-
     fun loadPermissions(context: Context) {
         permissionsState = PermissionManager.getAllPermissionStatuses(context)
     }
 
     fun refreshPermissions(context: Context) {
         loadPermissions(context)
-    }
-
-    fun showPermissionDetails(permission: PermissionStatus) {
-        selectedPermission = permission
-        showPermissionDialog = true
-    }
-
-    fun hidePermissionDialog() {
-        showPermissionDialog = false
-        selectedPermission = null
     }
 
     fun hasAllRequiredPermissions(context: Context): Boolean {

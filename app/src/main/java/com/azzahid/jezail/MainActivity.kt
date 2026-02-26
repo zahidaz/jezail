@@ -10,6 +10,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
@@ -51,6 +52,13 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 val uiState by viewModel.uiState.collectAsState()
 
+                LaunchedEffect(uiState.isRooted) {
+                    if (uiState.isRooted) {
+                        viewModel.startServer(this@MainActivity)
+                        delayedStatusUpdate()
+                    }
+                }
+
                 MainScreen(
                     isServerRunning = uiState.serverStatus.isRunning,
                     deviceIpAddress = uiState.serverStatus.ipAddress,
@@ -71,16 +79,12 @@ class MainActivity : ComponentActivity() {
                     },
                     onStopAdb = {
                         viewModel.stopAdb()
-                        viewModel.stopServer(this)
                     },
-                    onOpenPermissions = { },
                     onPortChange = { newPort -> viewModel.setServerPort(newPort) })
             }
         }
 
         bindToService()
-        viewModel.startServer(this)
-        delayedStatusUpdate()
     }
 
     private fun bindToService() {
@@ -105,11 +109,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
         if (isServiceBound) {
             unbindService(serviceConnection)
             isServiceBound = false
         }
+        super.onDestroy()
         Log.i(TAG, "Activity shutting down")
     }
 

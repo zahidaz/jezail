@@ -39,12 +39,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.azzahid.jezail.features.managers.AdbManager
 import com.azzahid.jezail.core.data.models.PermissionStatus
 import com.azzahid.jezail.ui.permissions.PermissionsViewModel
 
@@ -60,8 +62,8 @@ fun MainScreen(
     onStopServer: () -> Unit,
     onStartAdb: () -> Unit,
     onStopAdb: () -> Unit,
-    onOpenPermissions: () -> Unit = {},
     onPortChange: (Int) -> Unit = {},
+    adbPort: String = AdbManager.ADB_PORT,
     permissionsViewModel: PermissionsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -87,13 +89,13 @@ fun MainScreen(
                             text = "JEZAIL",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFFF0000),
+                            color = MaterialTheme.colorScheme.primary,
                             letterSpacing = 2.sp
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = Color(0xFFFF0000)
+                        titleContentColor = MaterialTheme.colorScheme.primary
                     )
                 )
             }
@@ -134,7 +136,7 @@ fun MainScreen(
                 CompactServiceCard(
                     title = "ADB Daemon",
                     isRunning = isAdbRunning,
-                    connectionInfo = if (isAdbRunning) "$deviceIpAddress:5555" else null,
+                    connectionInfo = if (isAdbRunning) "$deviceIpAddress:$adbPort" else null,
                     onStart = if (isRooted) onStartAdb else null,
                     onStop = if (isRooted) onStopAdb else null
                 )
@@ -166,26 +168,20 @@ fun MainScreen(
                 )
             }
 
-            if (permissionsViewModel.permissionsState.isEmpty()) {
+            if (permissionsViewModel.permissionsState.all { it.isGranted }) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "All Set",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "No dangerous permissions required",
-                                style = MaterialTheme.typography.bodyMedium
+                                text = "All permissions granted",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
@@ -256,6 +252,7 @@ fun PortChangeDialog(
                         }
                     },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp)
                 )
             }
@@ -662,14 +659,26 @@ fun CompactPermissionCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = if (permission.isGranted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                        color = when {
+                            permission.isGranted -> MaterialTheme.colorScheme.primaryContainer
+                            permission.isRequired -> MaterialTheme.colorScheme.errorContainer
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        }
                     ) {
                         Text(
-                            text = if (permission.isGranted) "Granted" else "Required",
+                            text = when {
+                                permission.isGranted -> "Granted"
+                                permission.isRequired -> "Required"
+                                else -> "Denied"
+                            },
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (permission.isGranted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                            color = when {
+                                permission.isGranted -> MaterialTheme.colorScheme.onPrimaryContainer
+                                permission.isRequired -> MaterialTheme.colorScheme.onErrorContainer
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
 

@@ -61,8 +61,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateServerStatus(serverStatus: ServerStatus?) {
         serverStatus?.let {
             _uiState.value = _uiState.value.copy(serverStatus = it)
-        } ?: {
-            _uiState.value = _uiState.value.copy(HttpServerService.defaultServerStatus)
+        } ?: run {
+            _uiState.value = _uiState.value.copy(serverStatus = HttpServerService.defaultServerStatus)
         }
     }
 
