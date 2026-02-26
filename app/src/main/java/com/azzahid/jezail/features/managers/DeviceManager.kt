@@ -32,8 +32,8 @@ import java.io.RandomAccessFile
 
 object DeviceManager {
 
-    private val GETPROP_REGEX = Regex("\\[(.+?)]: \\[(.*)]")
-    private val WHITESPACE_REGEX = Regex("\\s+")
+    internal val GETPROP_REGEX = Regex("\\[(.+?)]: \\[(.*)]")
+    internal val WHITESPACE_REGEX = Regex("\\s+")
 
     fun getDeviceInfo(): Map<String, Any?> {
         val ram = getRamInfo()
@@ -442,7 +442,7 @@ object DeviceManager {
     private fun intToIp(ip: Int): String =
         "${ip and 0xFF}.${ip shr 8 and 0xFF}.${ip shr 16 and 0xFF}.${ip shr 24 and 0xFF}"
 
-    private fun sanitizeShellArg(input: String): String =
+    internal fun sanitizeShellArg(input: String): String =
         input.replace("'", "'\\''")
 
     private fun getFilteredLogs(baseCommand: String, lines: Int, filter: String?): List<String> {

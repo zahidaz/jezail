@@ -127,6 +127,10 @@ dependencies {
     implementation(libs.ktor.swagger.ui)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.content.negotiation)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit.v120)
     androidTestImplementation(libs.androidx.espresso.core.v360)
     androidTestImplementation(platform(libs.androidx.compose.bom))

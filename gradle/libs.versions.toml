@@ -14,6 +14,7 @@ ktorServerCallLogging = "3.2.3"
 ktorServerCors = "3.2.3"
 ktorSwaggerUi = "5.2.0"
 ktorVersion = "3.2.3"
+mockk = "1.13.16"
 lifecycleRuntimeKtxVersion = "2.9.2"
 materialIconsExtended = "1.7.8"
 service = "6.0.0"
@@ -38,7 +39,11 @@ ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktorVer
 ktor-server-cors = { module = "io.ktor:ktor-server-cors", version.ref = "ktorServerCors" }
 ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktorVersion" }
 ktor-swagger-ui = { module = "io.github.smiley4:ktor-swagger-ui", version.ref = "ktorSwaggerUi" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesCore" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktorVersion" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktorVersion" }
 libsu-core = { module = "com.github.topjohnwu.libsu:core", version.ref = "core" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
