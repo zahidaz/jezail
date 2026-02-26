@@ -40,6 +40,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.websocket.WebSockets
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
@@ -97,6 +98,8 @@ fun Application.configureRouting() {
     val webFiles = AssetsResourceProvider("web")
     val refridaFiles = AssetsResourceProvider("refrida")
     val pairFiles = AssetsResourceProvider("pair")
+    val mirrorFiles = AssetsResourceProvider("mirror")
+    val terminalFiles = AssetsResourceProvider("terminal")
 
     install(AuthPlugin)
 
@@ -176,6 +179,30 @@ fun Application.configureRouting() {
             certificateRoutes()
         }
 
+        get("/mirror") {
+            call.respondRedirect("/mirror/index.html", permanent = false)
+        }
+
+        get("/mirror/{file...}") {
+            val path = call.parameters.getAll("file")?.joinToString("/")
+                ?: return@get call.respond(NotFound)
+            val resource = mirrorFiles.getResource(path)
+            if (resource != null) call.respondAssetNoCache(resource)
+            else call.respond(NotFound)
+        }
+
+        get("/terminal") {
+            call.respondRedirect("/terminal/index.html", permanent = false)
+        }
+
+        get("/terminal/{file...}") {
+            val path = call.parameters.getAll("file")?.joinToString("/")
+                ?: return@get call.respond(NotFound)
+            val resource = terminalFiles.getResource(path)
+            if (resource != null) call.respondAssetNoCache(resource)
+            else call.respond(NotFound)
+        }
+
         get("/refrida") {
             call.respondRedirect("/refrida/index.html", permanent = false)
         }
@@ -204,6 +231,8 @@ fun Application.configureRouting() {
 
 
 fun Application.configureServer() {
+
+    install(WebSockets)
 
     install(CORS) {
         anyHost() // Only for testing purposes.

@@ -21,13 +21,19 @@ import android.os.Environment
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat.checkSelfPermission
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.azzahid.jezail.JezailApp
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.concurrent.TimeUnit
 
 
 object DeviceManager {
@@ -537,6 +543,94 @@ object DeviceManager {
         return result.isSuccess
     }
 
+    fun inputText(text: String): Boolean {
+        val encoded = text.replace(" ", "%s")
+        val result = Shell.cmd("input text '${sanitizeShellArg(encoded)}'").exec()
+        return result.isSuccess
+    }
+
+    fun captureScreenshotToFile(destination: File): Boolean {
+        val res = Shell.cmd("screencap -p ${destination.absolutePath}").exec()
+        return res.isSuccess
+    }
+
+    fun captureScreenshotBytes(quality: Int = 50, scale: Float = 0.5f): ByteArray? {
+        val bitmap = captureRawBitmap() ?: capturePngBitmap() ?: return null
+        val finalBitmap = if (scale < 1f) {
+            val sw = (bitmap.width * scale).toInt().coerceAtLeast(1)
+            val sh = (bitmap.height * scale).toInt().coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(bitmap, sw, sh, false)
+            bitmap.recycle()
+            scaled
+        } else bitmap
+        val out = ByteArrayOutputStream()
+        finalBitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+        finalBitmap.recycle()
+        return out.toByteArray()
+    }
+
+    private fun captureRawBitmap(): Bitmap? {
+        return try {
+            val process = ProcessBuilder("su", "-c", "screencap").start()
+            val input = process.inputStream.buffered()
+            val header = ByteArray(12)
+            var pos = 0
+            while (pos < 12) {
+                val n = input.read(header, pos, 12 - pos)
+                if (n <= 0) { process.destroy(); return null }
+                pos += n
+            }
+            val buf = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN)
+            val w = buf.int
+            val h = buf.int
+            val fmt = buf.int
+            val bpp = when (fmt) {
+                1, 2, 5 -> 4
+                4 -> 2
+                else -> { process.destroy(); return null }
+            }
+            val size = w * h * bpp
+            val pixels = ByteArray(size)
+            pos = 0
+            while (pos < size) {
+                val n = input.read(pixels, pos, minOf(65536, size - pos))
+                if (n <= 0) break
+                pos += n
+            }
+            process.destroy()
+            if (pos < size) return null
+            val config = if (bpp == 2) Bitmap.Config.RGB_565 else Bitmap.Config.ARGB_8888
+            val bitmap = Bitmap.createBitmap(w, h, config)
+            bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(pixels))
+            bitmap
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun capturePngBitmap(): Bitmap? {
+        return try {
+            val process = ProcessBuilder("su", "-c", "screencap -p").start()
+            val bytes = process.inputStream.readBytes()
+            process.waitFor(5, TimeUnit.SECONDS)
+            process.destroy()
+            if (bytes.isEmpty()) return null
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun startLogcatProcess(buffer: String = "main", filter: String? = null): Process {
+        val sanitizedBuffer = sanitizeShellArg(buffer)
+        val cmd = if (filter != null) {
+            "logcat -v threadtime -b $sanitizedBuffer | grep '${sanitizeShellArg(filter)}'"
+        } else {
+            "logcat -v threadtime -b $sanitizedBuffer"
+        }
+        return ProcessBuilder("sh", "-c", cmd).redirectErrorStream(true).start()
+    }
+
     fun getSystemProperty(key: String): String? {
         val result = Shell.cmd("getprop '${sanitizeShellArg(key)}'").exec()
         return if (result.isSuccess) result.out.firstOrNull() else null
@@ -678,6 +772,23 @@ object DeviceManager {
     fun clearPrivateDns() {
         Shell.cmd("settings put global private_dns_mode opportunistic").exec()
         Shell.cmd("settings delete global private_dns_specifier").exec()
+    }
+
+    fun getAppOps(packageName: String): List<String> {
+        val result = Shell.cmd("appops get '${sanitizeShellArg(packageName)}'").exec()
+        return if (result.isSuccess) result.out else emptyList()
+    }
+
+    fun setAppOp(packageName: String, op: String, mode: String): Boolean {
+        val result = Shell.cmd(
+            "appops set '${sanitizeShellArg(packageName)}' '${sanitizeShellArg(op)}' '${sanitizeShellArg(mode)}'"
+        ).exec()
+        return result.isSuccess
+    }
+
+    fun resetAppOps(packageName: String): Boolean {
+        val result = Shell.cmd("appops reset '${sanitizeShellArg(packageName)}'").exec()
+        return result.isSuccess
     }
 
     fun getProcessInfo(pid: Int): Map<String, Any?> {

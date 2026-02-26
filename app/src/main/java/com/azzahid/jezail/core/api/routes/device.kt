@@ -2,7 +2,9 @@ package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
+import com.azzahid.jezail.features.managers.AdbManager
 import com.azzahid.jezail.features.managers.DeviceManager
+import com.azzahid.jezail.features.managers.ScreenMirrorManager
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
@@ -13,8 +15,16 @@ import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.close
+import kotlinx.coroutines.launch
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.Frame
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 fun Route.deviceRoutes() {
     route("/device") {
@@ -219,6 +229,36 @@ fun Route.deviceRoutes() {
                     call.respond(InternalServerError, Failure("Failed to clear logs"))
                 }
             }
+
+            webSocket("/live") {
+                val buffer = call.request.queryParameters["buffer"] ?: "main"
+                val filter = call.request.queryParameters["filter"]
+                val process = DeviceManager.startLogcatProcess(buffer, filter)
+                try {
+                    val reader = process.inputStream.bufferedReader()
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        send(Frame.Text(line!!))
+                    }
+                } finally {
+                    process.destroy()
+                }
+            }
+        }
+
+        webSocket("/mirror") {
+            val interval = call.request.queryParameters["interval"]?.toLongOrNull() ?: 200L
+            val quality = call.request.queryParameters["quality"]?.toIntOrNull()?.coerceIn(10, 100) ?: 50
+            val scale = call.request.queryParameters["scale"]?.toFloatOrNull()?.coerceIn(0.1f, 1f) ?: 0.5f
+            while (true) {
+                val bytes = if (ScreenMirrorManager.isActive) {
+                    ScreenMirrorManager.latestFrame
+                } else {
+                    withContext(Dispatchers.IO) { DeviceManager.captureScreenshotBytes(quality, scale) }
+                }
+                if (bytes != null) send(Frame.Binary(true, bytes))
+                delay(interval)
+            }
         }
 
         get("/screenshot", {
@@ -299,6 +339,18 @@ fun Route.deviceRoutes() {
                 call.respond(
                     if (success) Success("Key code $keyCode sent") else Failure("Failed to send")
                 )
+            }
+
+            post("/text", {
+                description = "Type text on the device"
+                request {
+                    body<String> { description = "Text to type" }
+                }
+            }) {
+                val text = call.receiveText()
+                require(text.isNotBlank()) { "Text cannot be blank" }
+                val success = DeviceManager.inputText(text)
+                call.respond(if (success) Success("Text input sent") else Failure("Failed"))
             }
         }
 
@@ -472,6 +524,86 @@ fun Route.deviceRoutes() {
                 val value = call.receiveText()
                 val success = DeviceManager.setSystemProperty(key, value)
                 call.respond(if (success) Success("Property set") else Failure("Failed"))
+            }
+        }
+
+        route("/appops") {
+            get("/{packageName}", {
+                description = "Get app ops for a package"
+                request {
+                    pathParameter<String>("packageName") {
+                        description = "Package name"
+                    }
+                }
+            }) {
+                val packageName = call.parameters["packageName"] ?: ""
+                call.respond(Success(DeviceManager.getAppOps(packageName)))
+            }
+
+            post("/{packageName}/{op}/{mode}", {
+                description = "Set an app op for a package"
+                request {
+                    pathParameter<String>("packageName") { description = "Package name" }
+                    pathParameter<String>("op") { description = "Operation name (e.g. PROJECT_MEDIA)" }
+                    pathParameter<String>("mode") { description = "Mode (allow, deny, ignore, default)" }
+                }
+            }) {
+                val packageName = call.parameters["packageName"] ?: ""
+                val op = call.parameters["op"] ?: ""
+                val mode = call.parameters["mode"] ?: ""
+                val success = DeviceManager.setAppOp(packageName, op, mode)
+                call.respond(if (success) Success("App op set") else Failure("Failed"))
+            }
+
+            delete("/{packageName}", {
+                description = "Reset all app ops for a package"
+                request {
+                    pathParameter<String>("packageName") { description = "Package name" }
+                }
+            }) {
+                val packageName = call.parameters["packageName"] ?: ""
+                val success = DeviceManager.resetAppOps(packageName)
+                call.respond(if (success) Success("App ops reset") else Failure("Failed"))
+            }
+        }
+
+        webSocket("/terminal") {
+            val isAdbRunning = AdbManager.getStatus()["isRunning"] as Boolean
+            if (!isAdbRunning) {
+                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "ADB is not running"))
+                return@webSocket
+            }
+            val marker = "__JEZAIL_PWD__"
+            val process = ProcessBuilder("su").redirectErrorStream(true).start()
+            val output = process.inputStream
+            val input = process.outputStream
+            withContext(Dispatchers.IO) {
+                input.write("stty -echo 2>/dev/null; PS1=''; PS2=''\n".toByteArray())
+                input.flush()
+                input.write("echo ${marker}\$(pwd)${marker}\n".toByteArray())
+                input.flush()
+            }
+            val outputJob = launch(Dispatchers.IO) {
+                val buf = ByteArray(4096)
+                var n: Int
+                while (output.read(buf).also { n = it } != -1) {
+                    send(Frame.Text(String(buf, 0, n)))
+                }
+            }
+            try {
+                for (frame in incoming) {
+                    if (frame is Frame.Text) {
+                        val cmd = String(frame.data)
+                        withContext(Dispatchers.IO) {
+                            input.write(cmd.toByteArray())
+                            input.write("echo ${marker}\$(pwd)${marker}\n".toByteArray())
+                            input.flush()
+                        }
+                    }
+                }
+            } finally {
+                process.destroy()
+                outputJob.cancel()
             }
         }
 
