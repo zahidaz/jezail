@@ -121,8 +121,8 @@ fun Application.configureRouting() {
 
         get("/{file...}") {
             val path = call.parameters.getAll("file")?.joinToString("/")
-            if (path == null) call.respond(NotFound)
-            val resource = webFiles.getResource(path!!)
+                ?: return@get call.respond(NotFound)
+            val resource = webFiles.getResource(path)
             if (resource != null) call.respondAssetNoCache(resource)
             else call.respond(NotFound)
         }

@@ -60,7 +60,7 @@ class HttpServerService : Service() {
     private var port = DEFAULT_PORT
     private var httpServer = buildServer(port)
     private var isServerRunning = false
-    private val localIp = getLocalIpAddress()
+    private val localIp: String get() = getLocalIpAddress()
     private val binder = HttpServerBinder()
 
     inner class HttpServerBinder : Binder() {
@@ -153,7 +153,7 @@ class HttpServerService : Service() {
 
     private fun updateNotification() {
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(
-            NOTIFICATION_ID, createNotification(DEFAULT_PORT)
+            NOTIFICATION_ID, createNotification(port)
         )
     }
 
@@ -168,7 +168,7 @@ class HttpServerService : Service() {
         isRunning = isServerRunning,
         port = port,
         ipAddress = localIp,
-        url = if (isServerRunning) "http://$localIp:$DEFAULT_PORT" else null
+        url = if (isServerRunning) "http://$localIp:$port" else null
     )
 
 }

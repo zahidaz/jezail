@@ -1,6 +1,7 @@
 package com.azzahid.jezail.features.managers
 
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.delay
 import java.io.IOException
 
 object AdbManager {
@@ -16,7 +17,7 @@ object AdbManager {
         )
     }
 
-    fun start(port: Int? = null) {
+    suspend fun start(port: Int? = null) {
         val actualPort = port ?: ADB_PORT.toInt()
 
         Shell.cmd(
@@ -24,7 +25,7 @@ object AdbManager {
             "setprop ctl.restart adbd"
         ).exec()
 
-        Thread.sleep(1_000)
+        delay(1_000)
 
         val running = Shell.cmd("pgrep adbd").exec().isSuccess
         if (!running) {
@@ -49,10 +50,11 @@ object AdbManager {
             "Public key cannot be blank"
         }
 
+        val sanitized = publicKey.replace("'", "'\\''")
         val result = Shell.cmd(
             "mkdir -p $ADB_KEYS_DIR",
             "chmod 755 $ADB_KEYS_DIR",
-            "echo '$publicKey' >> $ADB_KEYS_FILE",
+            "echo '${sanitized}' >> $ADB_KEYS_FILE",
             "chmod 644 $ADB_KEYS_FILE",
             "chown system:shell $ADB_KEYS_FILE"
         ).exec()

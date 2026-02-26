@@ -9,14 +9,13 @@ import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
 import io.github.smiley4.ktoropenapi.route
-import io.ktor.http.ContentType
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
-import io.ktor.server.response.respondBytes
+import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
 import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo
@@ -31,9 +30,13 @@ fun Route.filesRoutes() {
         description = "File system management endpoints"
     }) {
         val fileMutexes = ConcurrentHashMap<String, Mutex>()
+        val maxMutexes = 256
 
         fun getMutexFor(path: String): Mutex {
-            val normalizedPath = path.trim().replace("\\", "/") // Normalize for consistency
+            val normalizedPath = path.trim().replace("\\", "/")
+            if (fileMutexes.size > maxMutexes) {
+                fileMutexes.entries.removeIf { !it.value.isLocked }
+            }
             return fileMutexes.computeIfAbsent(normalizedPath) { Mutex() }
         }
 
@@ -156,8 +159,7 @@ fun Route.filesRoutes() {
                 call.response.header(
                     "Content-Disposition", "attachment; filename='${d.name}'"
                 )
-                val contentType = ContentType.Application.OctetStream
-                call.respondBytes(d.readBytes(), contentType)
+                call.respondFile(d)
                 d.deleteRecursively()
             } finally {
                 mutexes.reversed().forEach { it.unlock() }

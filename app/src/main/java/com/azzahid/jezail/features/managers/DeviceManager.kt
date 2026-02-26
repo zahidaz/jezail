@@ -23,6 +23,9 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat.checkSelfPermission
 import com.azzahid.jezail.JezailApp
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.RandomAccessFile
 
@@ -30,6 +33,9 @@ import java.io.RandomAccessFile
 object DeviceManager {
 
     fun getDeviceInfo(): Map<String, Any?> {
+        val ram = getRamInfo()
+        val battery = getBatteryInfo()
+        val network = getNetworkInfo()
         return mapOf(
             "deviceName" to getUserDefinedDeviceName(),
             "model" to Build.MODEL,
@@ -43,17 +49,13 @@ object DeviceManager {
             "isDebuggable" to (Build.TYPE == "userdebug" || Build.TYPE == "eng"),
             "supportedAbis" to Build.SUPPORTED_ABIS.toList(),
             "is64Bit" to Build.SUPPORTED_64_BIT_ABIS.isNotEmpty(),
-            "totalRam" to getRamInfo()["totalMem"],
-            "availableRam" to getRamInfo()["availMem"],
+            "totalRam" to ram["totalMem"],
+            "availableRam" to ram["availMem"],
             "internalStorage" to getStorageInfoBasic()["internal"],
-            "batteryLevel" to getBatteryInfo()["level"],
-            "isCharging" to getBatteryInfo()["plugged"],
-            "hasInternet" to getNetworkInfo()["activeConnection"].let {
-                (it as? Map<*, *>)?.get("hasInternet")
-            },
-            "wifiSSID" to getNetworkInfo()["wifi"].let {
-                (it as? Map<*, *>)?.get("ssid")
-            }
+            "batteryLevel" to battery["level"],
+            "isCharging" to battery["plugged"],
+            "hasInternet" to (network["activeConnection"] as? Map<*, *>)?.get("hasInternet"),
+            "wifiSSID" to (network["wifi"] as? Map<*, *>)?.get("ssid")
         )
     }
 
@@ -91,7 +93,6 @@ object DeviceManager {
             "host" to Build.HOST,
             "user" to Build.USER,
             "time" to Build.TIME,
-            "buildTags" to Build.TAGS,
             "isDebuggable" to (Build.TYPE == "userdebug" || Build.TYPE == "eng"),
         )
     }
@@ -181,31 +182,25 @@ object DeviceManager {
         )
     }
 
-    fun getCpuUsageMap(): MutableMap<String?, Float?> {
-        val result: MutableMap<String?, Float?> = HashMap()
+    suspend fun getCpuUsageMap(): Map<String, Float> = withContext(Dispatchers.IO) {
         try {
-            val reader = RandomAccessFile("/proc/stat", "r")
-            var load = reader.readLine()
-            var toks: Array<String?> =
-                load.split(" +".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            val idle1 = toks[3]!!.toLong()
-            val cpu1 =
-                (toks[4]!!.toLong() + toks[5]!!.toLong() + toks[6]!!.toLong() + toks[2]!!.toLong() + toks[7]!!.toLong() + toks[1]!!.toLong())
-            Thread.sleep(360)
-            reader.seek(0)
-            load = reader.readLine()
-            reader.close()
-            toks = load.split(" +".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            val idle2 = toks[3]!!.toLong()
-            val cpu2 =
-                (toks[4]!!.toLong() + toks[5]!!.toLong() + toks[6]!!.toLong() + toks[2]!!.toLong() + toks[7]!!.toLong() + toks[1]!!.toLong())
-            val cpuUsage = (cpu2 - cpu1).toFloat() / ((cpu2 + idle2) - (cpu1 + idle1))
-            result.put("cpu_usage", cpuUsage)
-        } catch (ex: java.lang.Exception) {
-            ex.printStackTrace()
-            result.put("cpu_usage", 0f)
+            RandomAccessFile("/proc/stat", "r").use { reader ->
+                var load = reader.readLine()
+                var toks = load.split(" +".toRegex()).filter { it.isNotEmpty() }
+                val idle1 = toks[3].toLong()
+                val cpu1 = toks[1].toLong() + toks[2].toLong() + toks[4].toLong() + toks[5].toLong() + toks[6].toLong() + toks[7].toLong()
+                delay(360)
+                reader.seek(0)
+                load = reader.readLine()
+                toks = load.split(" +".toRegex()).filter { it.isNotEmpty() }
+                val idle2 = toks[3].toLong()
+                val cpu2 = toks[1].toLong() + toks[2].toLong() + toks[4].toLong() + toks[5].toLong() + toks[6].toLong() + toks[7].toLong()
+                val cpuUsage = (cpu2 - cpu1).toFloat() / ((cpu2 + idle2) - (cpu1 + idle1))
+                mapOf("cpu_usage" to cpuUsage)
+            }
+        } catch (ex: Exception) {
+            mapOf("cpu_usage" to 0f)
         }
-        return result
     }
 
 
@@ -444,68 +439,40 @@ object DeviceManager {
     private fun intToIp(ip: Int): String =
         "${ip and 0xFF}.${ip shr 8 and 0xFF}.${ip shr 16 and 0xFF}.${ip shr 24 and 0xFF}"
 
-    fun getMainLogs(lines: Int = 100, filter: String? = null): List<String> {
+    private fun sanitizeShellArg(input: String): String =
+        input.replace("'", "'\\''")
+
+    private fun getFilteredLogs(baseCommand: String, lines: Int, filter: String?): List<String> {
         val command = if (filter != null) {
-            "logcat -d -t $lines | grep '$filter'"
+            "$baseCommand | grep '${sanitizeShellArg(filter)}'"
         } else {
-            "logcat -d -t $lines"
+            baseCommand
         }
         val result = Shell.cmd(command).exec()
         return if (result.isSuccess) result.out else emptyList()
     }
 
-    fun getKernelLogs(lines: Int = 100, filter: String? = null): List<String> {
-        val command = if (filter != null) {
-            "dmesg | grep '$filter' | tail -$lines"
-        } else {
-            "dmesg | tail -$lines"
-        }
-        val result = Shell.cmd(command).exec()
-        return if (result.isSuccess) result.out else emptyList()
-    }
+    fun getMainLogs(lines: Int = 100, filter: String? = null): List<String> =
+        getFilteredLogs("logcat -d -t $lines", lines, filter)
 
-    fun getRadioLogs(lines: Int = 50, filter: String? = null): List<String> {
-        val command = if (filter != null) {
-            "logcat -b radio -d -t $lines | grep '$filter'"
-        } else {
-            "logcat -b radio -d -t $lines"
-        }
-        val result = Shell.cmd(command).exec()
-        return if (result.isSuccess) result.out else emptyList()
-    }
+    fun getKernelLogs(lines: Int = 100, filter: String? = null): List<String> =
+        getFilteredLogs("dmesg | tail -$lines", lines, filter)
 
-    fun getSystemLogs(lines: Int = 50, filter: String? = null): List<String> {
-        val command = if (filter != null) {
-            "logcat -b system -d -t $lines | grep '$filter'"
-        } else {
-            "logcat -b system -d -t $lines"
-        }
-        val result = Shell.cmd(command).exec()
-        return if (result.isSuccess) result.out else emptyList()
-    }
+    fun getRadioLogs(lines: Int = 50, filter: String? = null): List<String> =
+        getFilteredLogs("logcat -b radio -d -t $lines", lines, filter)
 
-    fun getCrashLogs(lines: Int = 50, filter: String? = null): List<String> {
-        val command = if (filter != null) {
-            "logcat -b crash -d -t $lines | grep '$filter'"
-        } else {
-            "logcat -b crash -d -t $lines"
-        }
-        val result = Shell.cmd(command).exec()
-        return if (result.isSuccess) result.out else emptyList()
-    }
+    fun getSystemLogs(lines: Int = 50, filter: String? = null): List<String> =
+        getFilteredLogs("logcat -b system -d -t $lines", lines, filter)
 
-    fun getEventsLogs(lines: Int = 50, filter: String? = null): List<String> {
-        val command = if (filter != null) {
-            "logcat -b events -d -t $lines | grep '$filter'"
-        } else {
-            "logcat -b events -d -t $lines"
-        }
-        val result = Shell.cmd(command).exec()
-        return if (result.isSuccess) result.out else emptyList()
-    }
+    fun getCrashLogs(lines: Int = 50, filter: String? = null): List<String> =
+        getFilteredLogs("logcat -b crash -d -t $lines", lines, filter)
+
+    fun getEventsLogs(lines: Int = 50, filter: String? = null): List<String> =
+        getFilteredLogs("logcat -b events -d -t $lines", lines, filter)
 
     fun clearLogs(buffer: String = "all"): Boolean {
-        val command = if (buffer == "all") "logcat -c" else "logcat -b $buffer -c"
+        val sanitized = sanitizeShellArg(buffer)
+        val command = if (buffer == "all") "logcat -c" else "logcat -b '${sanitized}' -c"
         val result = Shell.cmd(command).exec()
         return result.isSuccess
     }
@@ -574,12 +541,12 @@ object DeviceManager {
     }
 
     fun getSystemProperty(key: String): String? {
-        val result = Shell.cmd("getprop $key").exec()
+        val result = Shell.cmd("getprop '${sanitizeShellArg(key)}'").exec()
         return if (result.isSuccess) result.out.firstOrNull() else null
     }
 
     fun setSystemProperty(key: String, value: String): Boolean {
-        val result = Shell.cmd("setprop $key $value").exec()
+        val result = Shell.cmd("setprop '${sanitizeShellArg(key)}' '${sanitizeShellArg(value)}'").exec()
         return result.isSuccess
     }
 
@@ -623,7 +590,7 @@ object DeviceManager {
     }
 
     fun killProcessByName(name: String): Boolean {
-        val result = Shell.cmd("pkill $name").exec()
+        val result = Shell.cmd("pkill '${sanitizeShellArg(name)}'").exec()
         return result.isSuccess
     }
 

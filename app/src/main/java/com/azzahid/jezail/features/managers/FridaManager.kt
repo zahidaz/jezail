@@ -30,17 +30,20 @@ object FridaManager {
 
     private fun fetchLatestVersion(): String {
         val url = URL("https://api.github.com/repos/frida/frida/releases/latest")
-        (url.openConnection() as HttpsURLConnection).run {
-            requestMethod = "GET"
-            connectTimeout = 10000
-            readTimeout = 10000
-            setRequestProperty("Accept", "application/json")
-            if (responseCode != 200) {
-                throw IllegalStateException("Github API returned: $responseMessage code: $responseCode")
+        val connection = url.openConnection() as HttpsURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+            connection.setRequestProperty("Accept", "application/json")
+            if (connection.responseCode != 200) {
+                throw IllegalStateException("Github API returned: ${connection.responseMessage} code: ${connection.responseCode}")
             }
-            return inputStream.bufferedReader().use {
+            return connection.inputStream.bufferedReader().use {
                 JSONObject(it.readText()).getString("tag_name")
             }
+        } finally {
+            connection.disconnect()
         }
     }
 
@@ -62,26 +65,24 @@ object FridaManager {
         if (tmpDirPath.exists()) tmpDirPath.deleteRecursively()
         tmpDirPath.mkdirs()
 
-        val xz = File(tmpDirPath, "${FRIDA_BINARY_NAME}.xz")
-        downloadFile(getDownloadUrl(latestVersion), xz)
-        val downloaded = File(tmpDirPath, FRIDA_BINARY_NAME)
-        extractXZFile(xz, downloaded)
-        withRootFS { rootfs ->
-            val sourceFile = downloaded
-            val targetFile = rootfs.getFile(fridaBinaryPath.absolutePath)
-            targetFile.parentFile?.mkdirs()
-            sourceFile.inputStream().use { input ->
-                targetFile.newOutputStream().use { output ->
-                    input.copyTo(output)
+        try {
+            val xz = File(tmpDirPath, "${FRIDA_BINARY_NAME}.xz")
+            downloadFile(getDownloadUrl(latestVersion), xz)
+            val downloaded = File(tmpDirPath, FRIDA_BINARY_NAME)
+            extractXZFile(xz, downloaded)
+            withRootFS { rootfs ->
+                val targetFile = rootfs.getFile(fridaBinaryPath.absolutePath)
+                targetFile.parentFile?.mkdirs()
+                downloaded.inputStream().use { input ->
+                    targetFile.newOutputStream().use { output ->
+                        input.copyTo(output)
+                    }
                 }
+                targetFile.setExecutable(true, false)
             }
-
-            targetFile.setExecutable(true, false)
+        } finally {
+            tmpDirPath.deleteRecursively()
         }
-
-
-        xz.delete()
-        downloaded.delete()
     }
 
     suspend fun install(context: Context) {

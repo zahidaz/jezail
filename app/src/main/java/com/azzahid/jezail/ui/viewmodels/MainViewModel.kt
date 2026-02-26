@@ -71,7 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startAdb() = executeAdbCommand("start") { AdbManager.start() }
     fun stopAdb() = executeAdbCommand("stop") { AdbManager.stop() }
 
-    private fun executeAdbCommand(action: String, command: () -> Unit) {
+    private fun executeAdbCommand(action: String, command: suspend () -> Unit) {
         if (!_uiState.value.isRooted) {
             Log.w(TAG, "Cannot $action ADB - device is not rooted")
             return

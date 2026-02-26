@@ -224,17 +224,20 @@ fun Route.deviceRoutes() {
         get("/screenshot", {
             description = "Capture a screenshot and return the file"
         }) {
-            DeviceManager.captureScreenshot()?.let {
-                if (it.exists()) {
+            val file = DeviceManager.captureScreenshot()
+            if (file != null && file.exists()) {
+                try {
                     call.response.header(
                         "Content-Disposition",
-                        "attachment; filename=\"${it.name}\""
+                        "attachment; filename=\"${file.name}\""
                     )
-                    call.respondFile(it)
-                } else {
-                    call.respond(InternalServerError, Failure("Failed to capture screenshot"))
+                    call.respondFile(file)
+                } finally {
+                    file.delete()
                 }
-            } ?: call.respond(InternalServerError, Failure("Failed to capture screenshot"))
+            } else {
+                call.respond(InternalServerError, Failure("Failed to capture screenshot"))
+            }
         }
 
         route("/keys") {
