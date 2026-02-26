@@ -1,6 +1,7 @@
 package com.azzahid.jezail.features.managers
 
 import android.content.Context
+import com.azzahid.jezail.core.data.Preferences
 import com.azzahid.jezail.core.services.withRootFS
 import com.azzahid.jezail.core.utils.downloadFile
 import com.azzahid.jezail.core.utils.extractXZFile
@@ -12,10 +13,8 @@ import javax.net.ssl.HttpsURLConnection
 
 object FridaManager {
     private const val TAG = "FridaManager"
-    const val FRIDA_PORT = "27042"
-    private const val FRIDA_BINARY_NAME = "frida-server"
     val rootPath = File("/data/local/tmp/.jezail/frida")
-    val fridaBinaryPath = File(rootPath, FRIDA_BINARY_NAME)
+    val fridaBinaryPath: File get() = File(rootPath, Preferences.fridaBinaryName)
 
     private val supportedAbi = listOf("arm64", "arm", "x86", "x86_64")
 
@@ -66,9 +65,9 @@ object FridaManager {
         tmpDirPath.mkdirs()
 
         try {
-            val xz = File(tmpDirPath, "${FRIDA_BINARY_NAME}.xz")
+            val xz = File(tmpDirPath, "frida-server.xz")
             downloadFile(getDownloadUrl(latestVersion), xz)
-            val downloaded = File(tmpDirPath, FRIDA_BINARY_NAME)
+            val downloaded = File(tmpDirPath, "frida-server")
             extractXZFile(xz, downloaded)
             withRootFS { rootfs ->
                 val targetFile = rootfs.getFile(fridaBinaryPath.absolutePath)
@@ -95,7 +94,7 @@ object FridaManager {
 
     fun start(port: Int? = null) {
         require(fridaBinaryPath.exists())
-        val chosenPort = port ?: FRIDA_PORT.toInt()
+        val chosenPort = port ?: Preferences.fridaPort
         val result = Shell.cmd(
             "chmod +x ${fridaBinaryPath.absolutePath}",
             "nohup ${fridaBinaryPath.absolutePath} -l 0.0.0.0:$chosenPort &"
@@ -117,15 +116,19 @@ object FridaManager {
     }
 
     fun stop(): Boolean {
-        Shell.cmd("pkill -f $FRIDA_BINARY_NAME", "killall $FRIDA_BINARY_NAME").exec()
-        return !Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess
+        val name = Preferences.fridaBinaryName
+        Shell.cmd("pkill -f $name", "killall $name").exec()
+        return !Shell.cmd("pgrep $name").exec().isSuccess
     }
 
-    fun getStatus(): Map<String, Any> = mapOf(
-        "isRunning" to Shell.cmd("pgrep $FRIDA_BINARY_NAME").exec().isSuccess,
-        "port" to FRIDA_PORT,
-        "version" to (getCurrentVersion() ?: "not installed")
-    )
+    fun getStatus(): Map<String, Any> {
+        val name = Preferences.fridaBinaryName
+        return mapOf(
+            "isRunning" to Shell.cmd("pgrep $name").exec().isSuccess,
+            "port" to Preferences.fridaPort,
+            "version" to (getCurrentVersion() ?: "not installed")
+        )
+    }
 
     fun getInfo(): Map<String, Any> = buildMap {
         val currentVersion = getCurrentVersion()
@@ -147,9 +150,9 @@ object FridaManager {
             put("needsUpdate", false)
         }
 
-        put("port", FRIDA_PORT)
+        put("port", Preferences.fridaPort)
+        put("binaryName", Preferences.fridaBinaryName)
         put("abi", abi)
-
     }
 
 

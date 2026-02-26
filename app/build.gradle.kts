@@ -105,8 +105,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.kotlinx.coroutines.core)
-//    implementation(libs.androidx.material.icons.extended)
-
 
     implementation(libs.libsu.core)
     implementation(libs.service)
@@ -121,6 +119,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.server.cors)
+    implementation(libs.ktor.server.websockets)
     implementation(libs.gson)
 
     implementation("io.github.smiley4:ktor-openapi:5.2.0") {

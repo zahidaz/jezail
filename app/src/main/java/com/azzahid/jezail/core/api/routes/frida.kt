@@ -1,16 +1,23 @@
 package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
+import com.azzahid.jezail.core.data.Preferences
 import com.azzahid.jezail.core.data.models.Failure
 import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.features.managers.FridaManager
 import io.github.smiley4.ktoropenapi.get
+import io.github.smiley4.ktoropenapi.post
 import io.github.smiley4.ktoropenapi.route
 import io.ktor.http.HttpStatusCode.Companion.ServiceUnavailable
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 fun Route.fridaRoutes() {
     val fridaRouteMutex = Mutex()
@@ -36,9 +43,16 @@ fun Route.fridaRoutes() {
 
         get("/start", {
             description = "Start the Frida server"
+            request {
+                queryParameter<Int>("port") {
+                    description = "Port to listen on (defaults to configured port)"
+                    required = false
+                }
+            }
         }) {
             fridaRouteMutex.withLock {
-                FridaManager.start()
+                val port = call.request.queryParameters["port"]?.toIntOrNull()
+                FridaManager.start(port)
                 call.respond(Success(data = "Frida server started"))
             }
         }
@@ -78,6 +92,30 @@ fun Route.fridaRoutes() {
                 FridaManager.updateToLatest(JezailApp.appContext)
                 call.respond(Success(data = FridaManager.getCurrentVersion()))
             }
+        }
+
+        get("/config", {
+            description = "Get Frida server configuration"
+        }) {
+            call.respond(Success(mapOf(
+                "port" to Preferences.fridaPort,
+                "binaryName" to Preferences.fridaBinaryName
+            )))
+        }
+
+        post("/config", {
+            description = "Update Frida server configuration"
+            request {
+                body<String> { description = "JSON with 'port' (int) and/or 'binaryName' (string)" }
+            }
+        }) {
+            val body = Json.parseToJsonElement(call.receiveText()).jsonObject
+            body["port"]?.jsonPrimitive?.intOrNull?.let { Preferences.fridaPort = it }
+            body["binaryName"]?.jsonPrimitive?.content?.let { Preferences.fridaBinaryName = it }
+            call.respond(Success(mapOf(
+                "port" to Preferences.fridaPort,
+                "binaryName" to Preferences.fridaBinaryName
+            )))
         }
     }
 }
