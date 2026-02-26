@@ -11,6 +11,10 @@ import com.azzahid.jezail.core.data.models.SimplePackageInfo
 import com.azzahid.jezail.core.utils.DrawableEncoder
 import com.google.gson.Gson
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import java.io.ByteArrayInputStream
@@ -19,57 +23,71 @@ import java.security.MessageDigest
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
-fun PackageInfo.toSimplePackageInfo(
-    pm: PackageManager,
-    context: Context,
-    drawableEncoder: DrawableEncoder
-): SimplePackageInfo? {
-    val app = applicationInfo ?: return null
-    return SimplePackageInfo(
-        packageName = packageName,
-        name = app.nonLocalizedLabel?.toString() ?: pm.getApplicationLabel(app).toString(),
-        icon = drawableEncoder.encodeDrawableToBase64(pm.getApplicationIcon(app)),
-        isRunning = MyPackageManager.isAppRunning(packageName, context),
-        canLaunch = pm.getLaunchIntentForPackage(packageName) != null,
-        isSystemApp = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
-        isUpdatedSystemApp = app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0
-    )
-}
-
 object MyPackageManager {
     private val drawableEncoder = DrawableEncoder()
     private val gson = Gson()
 
-    fun getInstalledApps(
-        context: Context = JezailApp.appContext,
-        includeSystem: Boolean = true,
-    ): List<SimplePackageInfo> {
-        val pm = context.packageManager
-        return pm.getInstalledPackages(PackageManager.GET_META_DATA)
-            .filter { packageInfo ->
-                val isSystemApp = packageInfo.applicationInfo?.flags?.let { flags ->
-                    flags and ApplicationInfo.FLAG_SYSTEM != 0
-                } ?: false
-                if (includeSystem) true else !isSystemApp
-            }
-            .mapNotNull { packageInfo ->
-                runCatching {
-                    packageInfo.toSimplePackageInfo(pm, context, drawableEncoder)
-                }.getOrNull()
-            }
+    private fun getRunningPackageNames(): Set<String> {
+        val result = Shell.cmd("ps -A -o NAME").exec()
+        if (!result.isSuccess) return emptySet()
+        return result.out.drop(1).map { it.trim() }.toSet()
     }
 
-    fun getUserInstalledApps(context: Context = JezailApp.appContext): List<SimplePackageInfo> =
-        getInstalledApps(context, includeSystem = false)
-
-    fun getSystemInstalledApps(context: Context = JezailApp.appContext): List<SimplePackageInfo> =
-        getInstalledApps(context, includeSystem = true)
-
-    fun getAllInstalledApps(context: Context = JezailApp.appContext): List<SimplePackageInfo> =
-        getInstalledApps(context, includeSystem = false) + getInstalledApps(
-            context,
-            includeSystem = true
+    private fun PackageInfo.toSimplePackageInfo(
+        pm: PackageManager,
+        runningNames: Set<String>,
+    ): SimplePackageInfo? {
+        val app = applicationInfo ?: return null
+        val iconCacheKey = "$packageName:$lastUpdateTime"
+        return SimplePackageInfo(
+            packageName = packageName,
+            name = app.nonLocalizedLabel?.toString() ?: pm.getApplicationLabel(app).toString(),
+            icon = drawableEncoder.encodeDrawableToBase64(pm.getApplicationIcon(app), iconCacheKey),
+            isRunning = packageName in runningNames,
+            canLaunch = pm.getLaunchIntentForPackage(packageName) != null,
+            isSystemApp = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+            isUpdatedSystemApp = app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0
         )
+    }
+
+    enum class PackageFilter { ALL, USER, SYSTEM }
+
+    suspend fun getInstalledApps(
+        context: Context = JezailApp.appContext,
+        filter: PackageFilter = PackageFilter.ALL,
+    ): List<SimplePackageInfo> = withContext(Dispatchers.IO) {
+        val pm = context.packageManager
+        val runningNames = getRunningPackageNames()
+
+        val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+            .filter { packageInfo ->
+                val isSystem = packageInfo.applicationInfo?.flags?.let { flags ->
+                    flags and ApplicationInfo.FLAG_SYSTEM != 0
+                } ?: false
+                when (filter) {
+                    PackageFilter.ALL -> true
+                    PackageFilter.USER -> !isSystem
+                    PackageFilter.SYSTEM -> isSystem
+                }
+            }
+
+        packages.map { packageInfo ->
+            async {
+                runCatching {
+                    packageInfo.toSimplePackageInfo(pm, runningNames)
+                }.getOrNull()
+            }
+        }.awaitAll().filterNotNull()
+    }
+
+    suspend fun getUserInstalledApps(context: Context = JezailApp.appContext) =
+        getInstalledApps(context, PackageFilter.USER)
+
+    suspend fun getSystemInstalledApps(context: Context = JezailApp.appContext) =
+        getInstalledApps(context, PackageFilter.SYSTEM)
+
+    suspend fun getAllInstalledApps(context: Context = JezailApp.appContext) =
+        getInstalledApps(context, PackageFilter.ALL)
 
     fun getAppDetails(
         packageName: String,
@@ -111,7 +129,8 @@ object MyPackageManager {
             error("Package '$packageName' not found")
         }
 
-        return packageInfo.toSimplePackageInfo(pm, context, drawableEncoder)
+        val runningNames = getRunningPackageNames()
+        return packageInfo.toSimplePackageInfo(pm, runningNames)
     }
 
     fun tryLaunchApp(

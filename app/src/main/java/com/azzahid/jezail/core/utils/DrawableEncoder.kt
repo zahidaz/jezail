@@ -8,6 +8,7 @@ import android.util.Base64
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.ConcurrentHashMap
 
 class DrawableEncoder {
 
@@ -17,17 +18,29 @@ class DrawableEncoder {
         private const val BITMAP_QUALITY = 90
     }
 
-    fun encodeDrawableToBase64(drawable: Drawable): String? {
+    private val cache = ConcurrentHashMap<String, String?>()
+
+    fun encodeDrawableToBase64(drawable: Drawable, cacheKey: String? = null): String? {
+        cacheKey?.let { key ->
+            cache[key]?.let { return it }
+        }
+
         return try {
             val bitmap = drawableToBitmap(drawable)
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, BITMAP_QUALITY, outputStream)
             val imageBytes = outputStream.toByteArray()
-            "data:image/png;base64," + Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+            val encoded = "data:image/png;base64," + Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+            cacheKey?.let { cache[it] = encoded }
+            encoded
         } catch (e: Exception) {
             Log.w(TAG, "Failed to encode drawable to base64", e)
             null
         }
+    }
+
+    fun invalidate(cacheKey: String) {
+        cache.remove(cacheKey)
     }
 
     private fun drawableToBitmap(drawable: Drawable): Bitmap {
