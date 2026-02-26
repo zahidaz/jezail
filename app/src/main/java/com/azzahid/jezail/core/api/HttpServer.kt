@@ -3,10 +3,12 @@ package com.azzahid.jezail.core.api
 import android.os.Build
 import android.util.Log
 import com.azzahid.jezail.core.api.routes.adbRoutes
+import com.azzahid.jezail.core.api.routes.appDataRoutes
 import com.azzahid.jezail.core.api.routes.certificateRoutes
 import com.azzahid.jezail.core.api.routes.deviceRoutes
 import com.azzahid.jezail.core.api.routes.filesRoutes
 import com.azzahid.jezail.core.api.routes.fridaRoutes
+import com.azzahid.jezail.core.api.routes.intentRoutes
 import com.azzahid.jezail.core.api.routes.packageRoutes
 import com.azzahid.jezail.core.data.models.AssetsResourceProvider
 import com.azzahid.jezail.core.data.models.Failure
@@ -177,6 +179,8 @@ fun Application.configureRouting() {
             packageRoutes()
             filesRoutes()
             certificateRoutes()
+            intentRoutes()
+            appDataRoutes()
         }
 
         get("/mirror") {
