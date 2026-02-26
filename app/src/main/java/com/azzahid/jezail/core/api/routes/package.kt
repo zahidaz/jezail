@@ -2,7 +2,10 @@ package com.azzahid.jezail.core.api.routes
 
 import com.azzahid.jezail.JezailApp
 import com.azzahid.jezail.core.data.models.Success
+import com.azzahid.jezail.core.services.withRootFSFile
+import com.azzahid.jezail.core.utils.zipDirectory
 import com.azzahid.jezail.features.managers.MyPackageManager
+import com.google.gson.Gson
 import io.github.smiley4.ktoropenapi.delete
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.post
@@ -11,11 +14,14 @@ import io.ktor.http.HttpStatusCode.Companion.OK
 import io.ktor.http.content.PartData
 import io.ktor.http.content.forEachPart
 import io.ktor.server.request.receiveMultipart
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondFile
 import io.ktor.server.routing.Route
 import io.ktor.server.util.getOrFail
 import io.ktor.utils.io.jvm.javaio.copyTo
 import java.io.File
+import java.util.UUID
 
 fun Route.packageRoutes() {
     route("/package", {
@@ -94,6 +100,130 @@ fun Route.packageRoutes() {
             call.respond(Success("App stopped successfully"))
         }
 
+        get("/{package}/foreground", {
+            description = "Bring an application to the foreground"
+            request {
+                pathParameter<String>("package") {
+                    description = "Package name (e.g., com.example.app)"
+                }
+                queryParameter<Boolean>("launch") {
+                    description = "Launch the app if not running (default: false)"
+                    required = false
+                }
+            }
+        }) {
+            val pkg = call.parameters.getOrFail("package")
+            val launch = call.request.queryParameters["launch"]?.toBoolean() ?: false
+            call.respond(Success(MyPackageManager.bringToForeground(pkg, launch)))
+        }
+
+        get("/{package}/download", {
+            description = "Download all APK files for a package"
+            request {
+                pathParameter<String>("package") {
+                    description = "Package name (e.g., com.example.app)"
+                }
+            }
+        }) {
+            val pkg = call.parameters.getOrFail("package")
+            val apkPaths = MyPackageManager.getApkPaths(pkg)
+            check(apkPaths.isNotEmpty()) { "No APK files found for '$pkg'" }
+
+            val downloadDir = File(
+                JezailApp.appContext.getExternalFilesDir(null),
+                "apk_download/${UUID.randomUUID()}"
+            )
+            downloadDir.mkdirs()
+
+            try {
+                apkPaths.forEach { path ->
+                    withRootFSFile(path) { src ->
+                        val target = File(downloadDir, File(path).name)
+                        src.copyTo(target, overwrite = true)
+                    }
+                }
+
+                val files = downloadDir.listFiles()?.toList() ?: emptyList()
+                call.response.header("X-Apk-Count", files.size.toString())
+                call.response.header("X-Apk-Files", files.joinToString(",") { it.name })
+                call.response.header("X-Apk-Sizes", files.joinToString(",") { it.length().toString() })
+
+                if (files.size == 1) {
+                    val apkFile = files.first()
+                    call.response.header(
+                        "Content-Disposition",
+                        "attachment; filename=\"$pkg.apk\""
+                    )
+                    call.respondFile(apkFile)
+                } else {
+                    val zipFile = zipDirectory(downloadDir, pkg)
+                    call.response.header(
+                        "Content-Disposition",
+                        "attachment; filename=\"$pkg.zip\""
+                    )
+                    call.respondFile(zipFile)
+                    zipFile.delete()
+                }
+            } finally {
+                downloadDir.deleteRecursively()
+            }
+        }
+
+        get("/{package}/backup", {
+            description = "Create a full backup (APK + data) of an application"
+            request {
+                pathParameter<String>("package") {
+                    description = "Package name (e.g., com.example.app)"
+                }
+            }
+        }) {
+            val pkg = call.parameters.getOrFail("package")
+            val manifest = MyPackageManager.getBackupManifest(pkg)
+            val apkPaths = MyPackageManager.getApkPaths(pkg)
+
+            val backupDir = File(
+                JezailApp.appContext.getExternalFilesDir(null),
+                "backup/${UUID.randomUUID()}"
+            )
+            val apkDir = File(backupDir, "apk")
+            apkDir.mkdirs()
+
+            try {
+                apkPaths.forEach { path ->
+                    withRootFSFile(path) { src ->
+                        val target = File(apkDir, File(path).name)
+                        src.copyTo(target, overwrite = true)
+                    }
+                }
+
+                val dataDir = manifest["dataDir"] as? String
+                if (dataDir != null) {
+                    val dataTar = File(backupDir, "data.tar.gz")
+                    val tarResult = com.topjohnwu.superuser.Shell.cmd(
+                        "tar czf '${dataTar.absolutePath}' -C /data/data '$pkg'"
+                    ).exec()
+                    if (!tarResult.isSuccess) {
+                        val fallbackTar = File(backupDir, "data.tar")
+                        com.topjohnwu.superuser.Shell.cmd(
+                            "tar cf '${fallbackTar.absolutePath}' -C /data/data '$pkg'"
+                        ).exec()
+                    }
+                }
+
+                File(backupDir, "manifest.json").writeText(Gson().toJson(manifest))
+
+                val zipFile = zipDirectory(backupDir, "$pkg-backup")
+                call.response.header(
+                    "Content-Disposition",
+                    "attachment; filename=\"$pkg-backup.zip\""
+                )
+                call.respondFile(zipFile)
+                zipFile.delete()
+            } finally {
+                backupDir.deleteRecursively()
+            }
+        }
+
         delete("/{package}", {
             description = "Uninstall an application"
             request {
@@ -108,7 +238,7 @@ fun Route.packageRoutes() {
         }
 
         post("/install", {
-            description = "Install an APK application"
+            description = "Install an APK, split APK zip, or XAPK application"
             request {
                 queryParameter<Boolean>("forceInstall") {
                     description = "Force installation even if app already exists"
@@ -119,7 +249,7 @@ fun Route.packageRoutes() {
                     required = false
                 }
                 body<ByteArray> {
-                    description = "Multipart form data containing the APK file"
+                    description = "Multipart form data containing the APK/XAPK file"
                 }
             }
         }) {
@@ -127,7 +257,7 @@ fun Route.packageRoutes() {
             val grantPermissions =
                 call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
 
-            val tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
+            val tempFile = File.createTempFile("install_", ".bin", JezailApp.appContext.cacheDir)
             try {
                 val multipart = call.receiveMultipart()
 
@@ -143,13 +273,51 @@ fun Route.packageRoutes() {
                     }
                 }
 
-                require(fileReceived) { "No APK file provided in the request" }
+                require(fileReceived) { "No file provided in the request" }
 
-                MyPackageManager.tryInstallApp(
-                    apk = tempFile,
-                    forceInstall = forceInstall,
-                    grantPermissions = grantPermissions,
-                )
+                val header = ByteArray(2)
+                tempFile.inputStream().use { it.read(header) }
+                val isZip = header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()
+
+                if (isZip) {
+                    val hasManifest = try {
+                        java.util.zip.ZipFile(tempFile).use { zip ->
+                            zip.getEntry("manifest.json") != null
+                        }
+                    } catch (e: Exception) {
+                        false
+                    }
+
+                    if (hasManifest) {
+                        MyPackageManager.tryInstallXapk(tempFile, forceInstall, grantPermissions)
+                    } else {
+                        val extractDir = File(JezailApp.appContext.cacheDir, "splits_${System.currentTimeMillis()}")
+                        try {
+                            extractDir.mkdirs()
+                            java.util.zip.ZipFile(tempFile).use { zip ->
+                                zip.entries().asSequence()
+                                    .filter { !it.isDirectory && it.name.endsWith(".apk") }
+                                    .forEach { entry ->
+                                        val outFile = File(extractDir, File(entry.name).name)
+                                        zip.getInputStream(entry).use { input ->
+                                            outFile.outputStream().use { output -> input.copyTo(output) }
+                                        }
+                                    }
+                            }
+                            val apks = extractDir.listFiles()?.filter { it.extension == "apk" } ?: emptyList()
+                            check(apks.isNotEmpty()) { "No APK files found in zip" }
+                            if (apks.size == 1) {
+                                MyPackageManager.tryInstallApp(apks.first(), forceInstall, grantPermissions)
+                            } else {
+                                MyPackageManager.tryInstallMultiApk(apks, forceInstall, grantPermissions)
+                            }
+                        } finally {
+                            extractDir.deleteRecursively()
+                        }
+                    }
+                } else {
+                    MyPackageManager.tryInstallApp(tempFile, forceInstall, grantPermissions)
+                }
 
                 call.respond(Success("App installed successfully"))
             } finally {

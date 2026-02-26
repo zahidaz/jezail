@@ -546,6 +546,184 @@ object MyPackageManager {
             "Error generating $algorithm hash for signature: ${e.message}"
         }
 
+    fun getApkPaths(packageName: String): List<String> {
+        require(packageName.isNotBlank()) { "Package name cannot be blank" }
+        val result = Shell.cmd("pm path '${DeviceManager.sanitizeShellArg(packageName)}'").exec()
+        check(result.isSuccess) {
+            "Failed to get APK paths for '$packageName'"
+        }
+        return result.out.mapNotNull { line ->
+            line.removePrefix("package:").trim().takeIf { it.isNotEmpty() }
+        }
+    }
+
+    fun bringToForeground(
+        packageName: String,
+        launch: Boolean = false,
+        context: Context = JezailApp.appContext
+    ): Map<String, Any?> {
+        require(packageName.isNotBlank()) { "Package name cannot be blank" }
+
+        runCatching {
+            context.packageManager.getApplicationInfo(packageName, 0)
+        }.getOrElse {
+            error("Package '$packageName' not found")
+        }
+
+        val running = isAppRunning(packageName, context)
+        if (!running && !launch) {
+            return mapOf(
+                "status" to "not_running",
+                "message" to "App '$packageName' is not running. Use launch=true to start it."
+            )
+        }
+
+        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
+        check(intent != null) { "No launch intent found for '$packageName'" }
+
+        val component = intent.component!!
+        val result = Shell.cmd("am start -n ${component.flattenToString()}").exec()
+        check(result.isSuccess) {
+            val errorMessage = result.err.joinToString("\n").ifEmpty { "Unknown error" }
+            "Failed to bring '$packageName' to foreground: $errorMessage"
+        }
+
+        return mapOf(
+            "status" to if (running) "brought_to_foreground" else "launched",
+            "component" to component.flattenToString()
+        )
+    }
+
+    fun tryInstallMultiApk(
+        apkFiles: List<File>,
+        forceInstall: Boolean = false,
+        grantPermissions: Boolean = false
+    ) {
+        require(apkFiles.isNotEmpty()) { "No APK files provided" }
+        apkFiles.forEach { apk ->
+            require(apk.exists()) { "APK file does not exist: '${apk.absolutePath}'" }
+        }
+
+        val totalSize = apkFiles.sumOf { it.length() }
+        val flags = buildString {
+            if (forceInstall) append(" -r")
+            if (grantPermissions) append(" -g")
+        }
+
+        val createResult = Shell.cmd("pm install-create -S $totalSize$flags").exec()
+        check(createResult.isSuccess) {
+            "Failed to create install session: ${createResult.err.joinToString("\n")}"
+        }
+
+        val sessionId = createResult.out.joinToString("").let { output ->
+            Regex("\\d+").find(output)?.value
+        } ?: error("Failed to parse session ID from: ${createResult.out.joinToString()}")
+
+        try {
+            apkFiles.forEachIndexed { index, apk ->
+                val writeResult = Shell.cmd(
+                    "pm install-write -S ${apk.length()} $sessionId $index '${apk.absolutePath}'"
+                ).exec()
+                check(writeResult.isSuccess) {
+                    "Failed to write APK ${apk.name} to session: ${writeResult.err.joinToString("\n")}"
+                }
+            }
+
+            val commitResult = Shell.cmd("pm install-commit $sessionId").exec()
+            check(commitResult.isSuccess) {
+                "Failed to commit install session: ${(commitResult.err + commitResult.out).joinToString("\n")}"
+            }
+        } catch (e: Exception) {
+            Shell.cmd("pm install-abandon $sessionId").exec()
+            throw e
+        }
+    }
+
+    fun tryInstallXapk(
+        xapkFile: File,
+        forceInstall: Boolean = false,
+        grantPermissions: Boolean = false
+    ) {
+        require(xapkFile.exists()) { "XAPK file does not exist: '${xapkFile.absolutePath}'" }
+
+        val tempDir = File(JezailApp.appContext.cacheDir, "xapk_${System.currentTimeMillis()}")
+        try {
+            tempDir.mkdirs()
+            java.util.zip.ZipFile(xapkFile).use { zip ->
+                zip.entries().asSequence().forEach { entry ->
+                    if (!entry.isDirectory) {
+                        val outFile = File(tempDir, entry.name)
+                        outFile.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            outFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                    }
+                }
+            }
+
+            val manifestFile = File(tempDir, "manifest.json")
+            if (manifestFile.exists()) {
+                val manifest = gson.fromJson(manifestFile.readText(), Map::class.java)
+                val pkg = manifest["package_name"] as? String
+
+                @Suppress("UNCHECKED_CAST")
+                val expansions = manifest["expansions"] as? List<Map<String, Any>>
+                if (pkg != null && expansions != null) {
+                    expansions.forEach { expansion ->
+                        val file = expansion["file"] as? String ?: return@forEach
+                        val installPath = expansion["install_path"] as? String
+                        if (installPath != null) {
+                            val src = File(tempDir, file)
+                            if (src.exists()) {
+                                Shell.cmd("mkdir -p '${File(installPath).parent}'").exec()
+                                Shell.cmd("cp '${src.absolutePath}' '$installPath'").exec()
+                            }
+                        }
+                    }
+                }
+            }
+
+            val apks = tempDir.walkTopDown().filter { it.extension == "apk" }.toList()
+            check(apks.isNotEmpty()) { "No APK files found in XAPK" }
+
+            if (apks.size == 1) {
+                tryInstallApp(apks.first(), forceInstall, grantPermissions)
+            } else {
+                tryInstallMultiApk(apks, forceInstall, grantPermissions)
+            }
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    fun getBackupManifest(
+        packageName: String,
+        context: Context = JezailApp.appContext
+    ): Map<String, Any?> {
+        require(packageName.isNotBlank()) { "Package name cannot be blank" }
+
+        val pm = context.packageManager
+        val packageInfo = runCatching {
+            pm.getPackageInfo(packageName, PackageManager.GET_PERMISSIONS)
+        }.getOrElse {
+            error("Package '$packageName' not found")
+        }
+
+        val appInfo = packageInfo.applicationInfo
+        return mapOf(
+            "packageName" to packageName,
+            "versionName" to packageInfo.versionName,
+            "versionCode" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                packageInfo.longVersionCode else @Suppress("DEPRECATION") packageInfo.versionCode.toLong(),
+            "minSdk" to (appInfo?.minSdkVersion ?: 0),
+            "targetSdk" to (appInfo?.targetSdkVersion ?: 0),
+            "permissions" to (packageInfo.requestedPermissions?.toList() ?: emptyList<String>()),
+            "isDebuggable" to (appInfo?.flags?.let { it and ApplicationInfo.FLAG_DEBUGGABLE != 0 } ?: false),
+            "dataDir" to appInfo?.dataDir,
+            "backupTimestamp" to System.currentTimeMillis()
+        )
+    }
+
     fun isAppDebuggable(
         packageName: String,
         context: Context = JezailApp.appContext

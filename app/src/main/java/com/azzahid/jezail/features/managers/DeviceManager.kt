@@ -590,6 +590,96 @@ object DeviceManager {
         return result.isSuccess
     }
 
+    fun getEnvironmentVariables(filter: String? = null): Map<String, String> {
+        val result = Shell.cmd("env").exec()
+        if (!result.isSuccess) return emptyMap()
+        return result.out.mapNotNull { line ->
+            val idx = line.indexOf('=')
+            if (idx > 0) line.substring(0, idx) to line.substring(idx + 1) else null
+        }.filter { (key, value) ->
+            filter == null || key.contains(filter, ignoreCase = true) || value.contains(filter, ignoreCase = true)
+        }.toMap()
+    }
+
+    fun getEnvironmentVariable(name: String): String? {
+        val result = Shell.cmd("printenv '${sanitizeShellArg(name)}'").exec()
+        return if (result.isSuccess) result.out.firstOrNull() else null
+    }
+
+    fun getInitEnvironment(): Map<String, String> {
+        val result = Shell.cmd("cat /proc/1/environ").exec()
+        if (!result.isSuccess) return emptyMap()
+        return result.out.joinToString("").split('\u0000').mapNotNull { entry ->
+            val idx = entry.indexOf('=')
+            if (idx > 0) entry.substring(0, idx) to entry.substring(idx + 1) else null
+        }.toMap()
+    }
+
+    fun getProxy(): Map<String, Any?> {
+        val proxy = Shell.cmd("settings get global http_proxy").exec()
+            .out.firstOrNull()?.takeIf { it != "null" && it.isNotBlank() }
+        val exclusionList = Shell.cmd("settings get global global_http_proxy_exclusion_list").exec()
+            .out.firstOrNull()?.takeIf { it != "null" && it.isNotBlank() }
+        val host = proxy?.substringBefore(":")
+        val port = proxy?.substringAfter(":", "")?.toIntOrNull()
+        return mapOf(
+            "enabled" to (proxy != null),
+            "host" to host,
+            "port" to port,
+            "exclusionList" to exclusionList
+        )
+    }
+
+    fun setProxy(host: String, port: Int, exclusionList: String? = null) {
+        val sanitizedHost = sanitizeShellArg(host)
+        Shell.cmd("settings put global http_proxy '${sanitizedHost}:${port}'").exec()
+        if (exclusionList != null) {
+            Shell.cmd("settings put global global_http_proxy_exclusion_list '${sanitizeShellArg(exclusionList)}'").exec()
+        }
+    }
+
+    fun clearProxy() {
+        Shell.cmd("settings delete global http_proxy").exec()
+        Shell.cmd("settings delete global global_http_proxy_exclusion_list").exec()
+    }
+
+    fun getDnsConfig(): Map<String, Any?> {
+        val dns1 = Shell.cmd("getprop net.dns1").exec().out.firstOrNull()?.ifBlank { null }
+        val dns2 = Shell.cmd("getprop net.dns2").exec().out.firstOrNull()?.ifBlank { null }
+        val privateMode = Shell.cmd("settings get global private_dns_mode").exec()
+            .out.firstOrNull()?.takeIf { it != "null" && it.isNotBlank() }
+        val privateSpecifier = Shell.cmd("settings get global private_dns_specifier").exec()
+            .out.firstOrNull()?.takeIf { it != "null" && it.isNotBlank() }
+        return mapOf(
+            "dns1" to dns1,
+            "dns2" to dns2,
+            "privateDnsMode" to privateMode,
+            "privateDnsSpecifier" to privateSpecifier
+        )
+    }
+
+    fun setDns(dns1: String, dns2: String? = null) {
+        Shell.cmd("setprop net.dns1 '${sanitizeShellArg(dns1)}'").exec()
+        if (dns2 != null) {
+            Shell.cmd("setprop net.dns2 '${sanitizeShellArg(dns2)}'").exec()
+        }
+    }
+
+    fun clearDns() {
+        Shell.cmd("setprop net.dns1 ''").exec()
+        Shell.cmd("setprop net.dns2 ''").exec()
+    }
+
+    fun setPrivateDns(hostname: String) {
+        Shell.cmd("settings put global private_dns_mode hostname").exec()
+        Shell.cmd("settings put global private_dns_specifier '${sanitizeShellArg(hostname)}'").exec()
+    }
+
+    fun clearPrivateDns() {
+        Shell.cmd("settings put global private_dns_mode opportunistic").exec()
+        Shell.cmd("settings delete global private_dns_specifier").exec()
+    }
+
     fun getProcessInfo(pid: Int): Map<String, Any?> {
         val status = Shell.cmd("cat /proc/$pid/status").exec()
         val cmdline = Shell.cmd("cat /proc/$pid/cmdline").exec()

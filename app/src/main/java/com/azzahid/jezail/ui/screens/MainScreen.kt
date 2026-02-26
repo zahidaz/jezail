@@ -46,7 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.azzahid.jezail.features.managers.AdbManager
+import com.azzahid.jezail.core.data.Preferences
 import com.azzahid.jezail.core.data.models.PermissionStatus
 import com.azzahid.jezail.ui.permissions.PermissionsViewModel
 
@@ -63,7 +63,7 @@ fun MainScreen(
     onStartAdb: () -> Unit,
     onStopAdb: () -> Unit,
     onPortChange: (Int) -> Unit = {},
-    adbPort: String = AdbManager.ADB_PORT,
+    adbPort: String = Preferences.adbPort.toString(),
     permissionsViewModel: PermissionsViewModel = viewModel()
 ) {
     val context = LocalContext.current

@@ -3,6 +3,7 @@ package com.azzahid.jezail.core.api
 import android.os.Build
 import android.util.Log
 import com.azzahid.jezail.core.api.routes.adbRoutes
+import com.azzahid.jezail.core.api.routes.certificateRoutes
 import com.azzahid.jezail.core.api.routes.deviceRoutes
 import com.azzahid.jezail.core.api.routes.filesRoutes
 import com.azzahid.jezail.core.api.routes.fridaRoutes
@@ -114,6 +115,7 @@ fun Application.configureRouting() {
             deviceRoutes()
             packageRoutes()
             filesRoutes()
+            certificateRoutes()
         }
 
         get("/refrida") {

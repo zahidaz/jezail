@@ -1,24 +1,34 @@
 package com.azzahid.jezail.features.managers
 
+import com.azzahid.jezail.core.data.Preferences
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.delay
 import java.io.IOException
 
 object AdbManager {
-    const val ADB_PORT = "5555"
     private const val ADB_KEYS_DIR = "/data/misc/adb"
     private const val ADB_KEYS_FILE = "$ADB_KEYS_DIR/adb_keys"
 
-    fun getStatus(): Map<String, Any> {
+    fun getStatus(): Map<String, Any?> {
         val running = Shell.cmd("pgrep adbd").exec().isSuccess
+        val activePort = Shell.cmd("getprop service.adb.tcp.port").exec()
+            .out.firstOrNull()?.toIntOrNull()
         return mapOf(
             "isRunning" to running,
-            "port" to ADB_PORT,
+            "activePort" to activePort,
+            "preferredPort" to Preferences.adbPort,
         )
     }
 
+    fun getPort(): Map<String, Int> = mapOf("port" to Preferences.adbPort)
+
+    fun setPort(port: Int) {
+        require(port in 1..65535) { "Port must be between 1 and 65535" }
+        Preferences.adbPort = port
+    }
+
     suspend fun start(port: Int? = null) {
-        val actualPort = port ?: ADB_PORT.toInt()
+        val actualPort = port ?: Preferences.adbPort
 
         Shell.cmd(
             "setprop service.adb.tcp.port $actualPort",

@@ -17,9 +17,16 @@ fun Route.adbRoutes() {
     }) {
         get("/start", {
             description = "Start the ADB server"
+            request {
+                queryParameter<Int>("port") {
+                    description = "TCP port to start ADB on (optional, uses preferred port if not specified)"
+                    required = false
+                }
+            }
         }) {
             adbRouteMutex.withLock {
-                AdbManager.start()
+                val port = call.request.queryParameters["port"]?.toIntOrNull()
+                AdbManager.start(port)
                 call.respond(Success(data = "ADB server started"))
             }
         }
@@ -52,6 +59,27 @@ fun Route.adbRoutes() {
             description = "Get the current status of the ADB server"
         }) {
             call.respond(Success(data = AdbManager.getStatus()))
+        }
+
+        get("/port", {
+            description = "Get the configured ADB port"
+        }) {
+            call.respond(Success(data = AdbManager.getPort()))
+        }
+
+        post("/port", {
+            description = "Set the preferred ADB port"
+            request {
+                queryParameter<Int>("port") {
+                    description = "TCP port number (1-65535)"
+                    required = true
+                }
+            }
+        }) {
+            val port = call.request.queryParameters["port"]?.toIntOrNull()
+                ?: throw IllegalArgumentException("Valid port number is required")
+            AdbManager.setPort(port)
+            call.respond(Success(data = AdbManager.getPort()))
         }
     }
 }

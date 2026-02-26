@@ -302,6 +302,141 @@ fun Route.deviceRoutes() {
             }
         }
 
+        route("/env") {
+            get({
+                description = "Get environment variables"
+                request {
+                    queryParameter<String>("filter") {
+                        description = "Filter by key or value (case-insensitive)"
+                        required = false
+                    }
+                    queryParameter<Boolean>("init") {
+                        description = "If true, return init process (PID 1) environment"
+                        required = false
+                    }
+                }
+            }) {
+                val init = call.request.queryParameters["init"]?.toBoolean() ?: false
+                if (init) {
+                    call.respond(Success(DeviceManager.getInitEnvironment()))
+                } else {
+                    val filter = call.request.queryParameters["filter"]
+                    call.respond(Success(DeviceManager.getEnvironmentVariables(filter)))
+                }
+            }
+
+            get("/{name}", {
+                description = "Get a specific environment variable"
+                request {
+                    pathParameter<String>("name") {
+                        description = "Environment variable name"
+                    }
+                }
+            }) {
+                val name = call.parameters["name"] ?: ""
+                val value = DeviceManager.getEnvironmentVariable(name)
+                call.respond(Success(mapOf("name" to name, "value" to value)))
+            }
+        }
+
+        route("/proxy") {
+            get({
+                description = "Get current global proxy configuration"
+            }) {
+                call.respond(Success(DeviceManager.getProxy()))
+            }
+
+            post({
+                description = "Set global HTTP proxy"
+                request {
+                    queryParameter<String>("host") {
+                        description = "Proxy host"
+                        required = true
+                    }
+                    queryParameter<Int>("port") {
+                        description = "Proxy port"
+                        required = true
+                    }
+                    queryParameter<String>("exclusionList") {
+                        description = "Comma-separated list of hosts to exclude"
+                        required = false
+                    }
+                }
+            }) {
+                val host = call.request.queryParameters["host"]
+                    ?: throw IllegalArgumentException("host parameter is required")
+                val port = call.request.queryParameters["port"]?.toIntOrNull()
+                    ?: throw IllegalArgumentException("Valid port number is required")
+                val exclusionList = call.request.queryParameters["exclusionList"]
+                DeviceManager.setProxy(host, port, exclusionList)
+                call.respond(Success(DeviceManager.getProxy()))
+            }
+
+            delete({
+                description = "Clear global HTTP proxy"
+            }) {
+                DeviceManager.clearProxy()
+                call.respond(Success("Proxy cleared"))
+            }
+        }
+
+        route("/dns") {
+            get({
+                description = "Get current DNS configuration"
+            }) {
+                call.respond(Success(DeviceManager.getDnsConfig()))
+            }
+
+            post({
+                description = "Set DNS servers"
+                request {
+                    queryParameter<String>("dns1") {
+                        description = "Primary DNS server IP"
+                        required = true
+                    }
+                    queryParameter<String>("dns2") {
+                        description = "Secondary DNS server IP"
+                        required = false
+                    }
+                }
+            }) {
+                val dns1 = call.request.queryParameters["dns1"]
+                    ?: throw IllegalArgumentException("dns1 parameter is required")
+                val dns2 = call.request.queryParameters["dns2"]
+                DeviceManager.setDns(dns1, dns2)
+                call.respond(Success(DeviceManager.getDnsConfig()))
+            }
+
+            delete({
+                description = "Clear DNS servers"
+            }) {
+                DeviceManager.clearDns()
+                call.respond(Success("DNS cleared"))
+            }
+
+            post("/private", {
+                description = "Set private DNS hostname (Android 9+)"
+                request {
+                    queryParameter<String>("host") {
+                        description = "Private DNS hostname"
+                        required = true
+                    }
+                }
+            }) {
+                val host = call.request.queryParameters["host"]
+                    ?: throw IllegalArgumentException("host parameter is required")
+                DeviceManager.setPrivateDns(host)
+                call.respond(Success(DeviceManager.getDnsConfig()))
+            }
+
+            delete("/private", {
+                description = "Clear private DNS configuration"
+            }) {
+                DeviceManager.clearPrivateDns()
+                call.respond(Success("Private DNS cleared"))
+            }
+        }
+
         route("/system") {
             get("/properties", {
                 description = "Get all system properties"
@@ -387,6 +522,3 @@ fun Route.deviceRoutes() {
         }
     }
 }
-
-
-
