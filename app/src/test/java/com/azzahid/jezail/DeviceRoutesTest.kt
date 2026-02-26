@@ -16,6 +16,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.ktor.server.websocket.WebSockets
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -48,6 +49,7 @@ class DeviceRoutesTest {
     }
 
     private fun Application.testModule() {
+        install(WebSockets)
         install(OpenApi)
 
         install(ContentNegotiation) {

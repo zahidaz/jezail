@@ -20,6 +20,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.ktor.server.websocket.WebSockets
 import io.mockk.every
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
@@ -53,6 +54,7 @@ class DeviceNewRoutesTest {
     }
 
     private fun Application.testModule() {
+        install(WebSockets)
         install(OpenApi)
         install(StatusPages) {
             exception<IllegalArgumentException> { call, cause ->
