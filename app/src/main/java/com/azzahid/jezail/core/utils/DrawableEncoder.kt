@@ -8,7 +8,7 @@ import android.util.Base64
 import android.util.Log
 import androidx.core.graphics.createBitmap
 import java.io.ByteArrayOutputStream
-import java.util.concurrent.ConcurrentHashMap
+import java.util.Collections
 
 class DrawableEncoder {
 
@@ -16,9 +16,15 @@ class DrawableEncoder {
         private const val TAG = "DrawableEncoder"
         private const val ICON_DEFAULT_SIZE = 96
         private const val BITMAP_QUALITY = 90
+        private const val MAX_CACHE_SIZE = 512
     }
 
-    private val cache = ConcurrentHashMap<String, String?>()
+    private val cache: MutableMap<String, String?> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, String?>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>?): Boolean =
+                size > MAX_CACHE_SIZE
+        }
+    )
 
     fun encodeDrawableToBase64(drawable: Drawable, cacheKey: String? = null): String? {
         cacheKey?.let { key ->

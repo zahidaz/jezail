@@ -123,36 +123,38 @@ fun Route.packageRoutes() {
                 }
             }
         }) {
-            var tempFile: File? = null
             val forceInstall = call.request.queryParameters["forceInstall"]?.toBoolean() ?: false
             val grantPermissions =
                 call.request.queryParameters["grantPermissions"]?.toBoolean() ?: false
 
-            tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
-            val multipart = call.receiveMultipart()
+            val tempFile = File.createTempFile("apk_", ".apk", JezailApp.appContext.cacheDir)
+            try {
+                val multipart = call.receiveMultipart()
 
-            var fileReceived = false
-            multipart.forEachPart { part ->
-                if (part is PartData.FileItem) {
-                    val input = part.provider()
-                    tempFile.outputStream().use { output ->
-                        input.copyTo(output)
+                var fileReceived = false
+                multipart.forEachPart { part ->
+                    if (part is PartData.FileItem) {
+                        val input = part.provider()
+                        tempFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                        fileReceived = true
+                        part.dispose()
                     }
-                    fileReceived = true
-                    part.dispose()
                 }
+
+                require(fileReceived) { "No APK file provided in the request" }
+
+                MyPackageManager.tryInstallApp(
+                    apk = tempFile,
+                    forceInstall = forceInstall,
+                    grantPermissions = grantPermissions,
+                )
+
+                call.respond(Success("App installed successfully"))
+            } finally {
+                tempFile.delete()
             }
-
-            require(fileReceived) { "No APK file provided in the request" }
-
-            MyPackageManager.tryInstallApp(
-                apk = tempFile,
-                forceInstall = forceInstall,
-                grantPermissions = grantPermissions,
-            )
-
-            tempFile?.delete()
-            call.respond(Success("App installed successfully"))
         }
 
         post("/{package}/permissions/grant", {

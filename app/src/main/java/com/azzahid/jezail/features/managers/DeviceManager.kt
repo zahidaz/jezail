@@ -32,6 +32,9 @@ import java.io.RandomAccessFile
 
 object DeviceManager {
 
+    private val GETPROP_REGEX = Regex("\\[(.+?)]: \\[(.*)]")
+    private val WHITESPACE_REGEX = Regex("\\s+")
+
     fun getDeviceInfo(): Map<String, Any?> {
         val ram = getRamInfo()
         val battery = getBatteryInfo()
@@ -186,13 +189,13 @@ object DeviceManager {
         try {
             RandomAccessFile("/proc/stat", "r").use { reader ->
                 var load = reader.readLine()
-                var toks = load.split(" +".toRegex()).filter { it.isNotEmpty() }
+                var toks = load.split(WHITESPACE_REGEX).filter { it.isNotEmpty() }
                 val idle1 = toks[3].toLong()
                 val cpu1 = toks[1].toLong() + toks[2].toLong() + toks[4].toLong() + toks[5].toLong() + toks[6].toLong() + toks[7].toLong()
                 delay(360)
                 reader.seek(0)
                 load = reader.readLine()
-                toks = load.split(" +".toRegex()).filter { it.isNotEmpty() }
+                toks = load.split(WHITESPACE_REGEX).filter { it.isNotEmpty() }
                 val idle2 = toks[3].toLong()
                 val cpu2 = toks[1].toLong() + toks[2].toLong() + toks[4].toLong() + toks[5].toLong() + toks[6].toLong() + toks[7].toLong()
                 val cpuUsage = (cpu2 - cpu1).toFloat() / ((cpu2 + idle2) - (cpu1 + idle1))
@@ -324,9 +327,9 @@ object DeviceManager {
         return if (diskstatsResult.isSuccess) {
             mapOf(
                 "blockDevices" to diskstatsResult.out.mapNotNull { line ->
-                    val parts = line.trim().split("\\s+".toRegex())
+                    val parts = line.trim().split(WHITESPACE_REGEX)
                     if (parts.size >= 14) {
-                        mapOf(
+                        mapOf<String, Any?>(
                             "device" to parts[2],
                             "readsCompleted" to parts[3].toLongOrNull(),
                             "sectorsRead" to parts[5].toLongOrNull(),
@@ -525,14 +528,8 @@ object DeviceManager {
     }
 
     fun pressVolumeUnmuteKey(): Boolean {
-        val unmuteResult = Shell.cmd("input keyevent KEYCODE_VOLUME_UP").exec()
-        if (!unmuteResult.isSuccess) return false
-
-        repeat(1) {
-            Shell.cmd("input keyevent KEYCODE_VOLUME_UP").exec()
-        }
-
-        return true
+        val result = Shell.cmd("input keyevent KEYCODE_VOLUME_UP").exec()
+        return result.isSuccess
     }
 
     fun sendKeyCode(keyCode: Int): Boolean {
@@ -554,8 +551,7 @@ object DeviceManager {
         val result = Shell.cmd("getprop").exec()
         return if (result.isSuccess) {
             result.out.mapNotNull { line ->
-                val regex = "\\[(.+?)]: \\[(.*)]".toRegex()
-                regex.find(line)?.let { match ->
+                GETPROP_REGEX.find(line)?.let { match ->
                     match.groupValues[1] to match.groupValues[2]
                 }
             }.toMap()
@@ -566,9 +562,9 @@ object DeviceManager {
         val result = Shell.cmd("ps -A").exec()
         return if (result.isSuccess) {
             result.out.drop(1).mapNotNull { line ->
-                val parts = line.trim().split("\\s+".toRegex())
+                val parts = line.trim().split(WHITESPACE_REGEX)
                 if (parts.size >= 9) {
-                    mapOf(
+                    mapOf<String, Any?>(
                         "pid" to parts[1].toIntOrNull(),
                         "ppid" to parts[2].toIntOrNull(),
                         "user" to parts[0],

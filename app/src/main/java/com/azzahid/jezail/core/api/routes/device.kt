@@ -137,7 +137,7 @@ fun Route.deviceRoutes() {
                     }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 100
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 100
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getMainLogs(lines, filter)))
             }
@@ -149,7 +149,7 @@ fun Route.deviceRoutes() {
                     queryParameter<String>("filter") { required = false }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 100
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 100
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getKernelLogs(lines, filter)))
             }
@@ -161,7 +161,7 @@ fun Route.deviceRoutes() {
                     queryParameter<String>("filter") { required = false }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 50
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getRadioLogs(lines, filter)))
             }
@@ -173,7 +173,7 @@ fun Route.deviceRoutes() {
                     queryParameter<String>("filter") { required = false }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 50
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getSystemLogs(lines, filter)))
             }
@@ -185,7 +185,7 @@ fun Route.deviceRoutes() {
                     queryParameter<String>("filter") { required = false }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 50
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getCrashLogs(lines, filter)))
             }
@@ -197,7 +197,7 @@ fun Route.deviceRoutes() {
                     queryParameter<String>("filter") { required = false }
                 }
             }) {
-                val lines = call.request.queryParameters["lines"]?.toInt() ?: 50
+                val lines = call.request.queryParameters["lines"]?.toIntOrNull() ?: 50
                 val filter = call.request.queryParameters["filter"]
                 call.respond(Success(DeviceManager.getEventsLogs(lines, filter)))
             }

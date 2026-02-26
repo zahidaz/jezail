@@ -82,11 +82,12 @@ fun downloadFile(url: String, to: File) {
         connectTimeout = 30000
         readTimeout = 60000
     }
-    if (connection.responseCode != 200) throw IOException("Download failed: ${connection.responseCode}")
-    connection.inputStream.use { input ->
-        FileOutputStream(
-            to, false
-        ).use { input.copyTo(it) }
+    try {
+        if (connection.responseCode != 200) throw IOException("Download failed: ${connection.responseCode}")
+        connection.inputStream.use { input ->
+            FileOutputStream(to, false).use { input.copyTo(it) }
+        }
+    } finally {
+        connection.disconnect()
     }
-    connection.disconnect()
 }
