@@ -12,6 +12,7 @@ import com.azzahid.jezail.core.data.models.ServerStatus
 import com.azzahid.jezail.core.data.models.ServerUiState
 import com.azzahid.jezail.core.services.HttpServerService
 import com.azzahid.jezail.features.managers.AdbManager
+import com.azzahid.jezail.features.managers.AuthManager
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +37,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val isRooted = runCatching { Shell.getShell().isRoot }.getOrElse {
                 Log.e(TAG, "Error checking root status", it); false
             }
-            _uiState.value = _uiState.value.copy(isRooted = isRooted)
+            _uiState.value = _uiState.value.copy(
+                isRooted = isRooted,
+                isAuthEnabled = AuthManager.isEnabled(),
+                authPin = Preferences.authPin
+            )
             if (isRooted) updateAdbStatus()
         }
     }
@@ -101,8 +106,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setAdbPort(port: Int) {
+        AdbManager.setPort(port)
+    }
+
     fun refreshAdbStatus() {
         if (_uiState.value.isRooted) updateAdbStatus()
+    }
+
+    fun toggleAuth(enabled: Boolean) {
+        AuthManager.setEnabled(enabled)
+        _uiState.value = _uiState.value.copy(
+            isAuthEnabled = enabled,
+            authPin = Preferences.authPin
+        )
+    }
+
+    fun regeneratePin() {
+        AuthManager.regeneratePin()
+        _uiState.value = _uiState.value.copy(authPin = Preferences.authPin)
     }
 
     companion object {

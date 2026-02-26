@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jezail - Pair</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fafafa;color:#1a1a1a;min-height:100vh;display:flex;align-items:center;justify-content:center}
+@media(prefers-color-scheme:dark){body{background:#111;color:#e0e0e0}.container{background:#1a1a1a;border-color:#2a2a2a}input{background:#111;border-color:#333;color:#fff}input:focus{border-color:#666}input::placeholder{color:#444}button{background:#e0e0e0;color:#111}button:hover{background:#ccc}.sub{color:#888}.label{color:#888}.error{color:#ef5350}}
+.container{width:100%;max-width:360px;padding:32px;border:1px solid #e0e0e0;border-radius:12px;background:#fff}
+h1{font-size:24px;font-weight:700;letter-spacing:4px;color:#E53935;margin-bottom:4px}
+.sub{font-size:13px;color:#666;margin-bottom:32px}
+input{width:100%;padding:12px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#1a1a1a;font-family:'Courier New',monospace;font-size:20px;letter-spacing:10px;text-align:center;outline:none}
+input:focus{border-color:#999}
+input::placeholder{letter-spacing:4px;font-size:14px;color:#ccc}
+button{width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px}
+button:hover{background:#333}
+button:disabled{opacity:.3;cursor:not-allowed}
+.error{color:#E53935;font-size:13px;text-align:center;margin-top:12px;display:none}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>JEZAIL</h1>
+<div class="sub">Pair with PIN from the app.</div>
+<input type="text" id="pin" maxlength="6" placeholder="------" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autofocus>
+<button id="submit" onclick="doPair()">Pair</button>
+<div class="error" id="error"></div>
+</div>
+<script>
+document.getElementById('pin').addEventListener('keydown',function(e){if(e.key==='Enter')doPair()});
+async function doPair(){
+var pin=document.getElementById('pin').value.trim();
+var err=document.getElementById('error');
+var btn=document.getElementById('submit');
+err.style.display='none';
+if(!/^\d{6}$/.test(pin)){err.textContent='Enter a 6-digit PIN';err.style.display='block';return}
+btn.disabled=true;btn.textContent='Pairing...';
+try{
+var r=await fetch('/pair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pin})});
+if(r.ok){location.href='/'}
+else{var d=await r.json();err.textContent=d.error||'Invalid PIN';err.style.display='block'}
+}catch(e){err.textContent='Connection failed';err.style.display='block'}
+btn.disabled=false;btn.textContent='Pair';
+}
+</script>
+</body>
+</html>

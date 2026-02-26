@@ -88,7 +88,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            assets.srcDirs("${layout.buildDirectory.get()}/generated/assets")
+            assets.srcDirs("src/main/assets", "${layout.buildDirectory.get()}/generated/assets")
         }
     }
 }

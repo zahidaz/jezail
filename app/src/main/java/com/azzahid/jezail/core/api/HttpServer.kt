@@ -14,19 +14,23 @@ import com.azzahid.jezail.core.data.models.Success
 import com.azzahid.jezail.core.data.models.respondAssetNoCache
 import com.azzahid.jezail.core.utils.AnySerializer
 import com.azzahid.jezail.core.utils.RoutingNodeSerializer
+import com.azzahid.jezail.features.managers.AuthManager
 import io.github.smiley4.ktoropenapi.OpenApi
 import io.github.smiley4.ktoropenapi.get
 import io.github.smiley4.ktoropenapi.openApi
 import io.github.smiley4.ktorswaggerui.swaggerUI
+import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpStatusCode.Companion.BadRequest
 import io.ktor.http.HttpStatusCode.Companion.Conflict
+import io.ktor.http.HttpStatusCode.Companion.Forbidden
 import io.ktor.http.HttpStatusCode.Companion.InternalServerError
 import io.ktor.http.HttpStatusCode.Companion.NotFound
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
@@ -39,13 +43,17 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.modules.SerializersModule
 import org.slf4j.event.Level
 import kotlin.reflect.KClass
@@ -62,11 +70,64 @@ fun buildServer(port: Int): CIOEmbeddedServer {
     }
 }
 
+private val bypassPaths = listOf("/pair", "/api/status", "/api/json", "/api/swagger")
+
+private val AuthPlugin = createApplicationPlugin(name = "AuthPlugin") {
+    onCall { call ->
+        if (!AuthManager.isEnabled()) return@onCall
+        val path = call.request.path()
+        if (bypassPaths.any { path.startsWith(it) }) return@onCall
+
+        val authHeader = call.request.headers[HttpHeaders.Authorization]
+        val bearerToken = authHeader?.removePrefix("Bearer ")?.trim()
+        if (bearerToken != null && AuthManager.validateToken(bearerToken)) return@onCall
+
+        val cookieToken = call.request.cookies["jezail_token"]
+        if (cookieToken != null && AuthManager.validateToken(cookieToken)) return@onCall
+
+        if (path.startsWith("/api/")) {
+            call.respond(HttpStatusCode.Unauthorized, Failure(error = "Unauthorized"))
+        } else {
+            call.respondRedirect("/pair")
+        }
+    }
+}
+
 fun Application.configureRouting() {
     val webFiles = AssetsResourceProvider("web")
     val refridaFiles = AssetsResourceProvider("refrida")
+    val pairFiles = AssetsResourceProvider("pair")
+
+    install(AuthPlugin)
 
     routing {
+        get("/pair") {
+            if (!AuthManager.isEnabled()) {
+                call.respondRedirect("/")
+                return@get
+            }
+            val resource = pairFiles.getResource("index.html")
+            if (resource != null) call.respondAssetNoCache(resource)
+            else call.respond(NotFound, Failure(error = "Pairing page not found"))
+        }
+
+        post("/pair") {
+            val body = runCatching {
+                Json.parseToJsonElement(call.receiveText()).jsonObject
+            }.getOrNull()
+            val pin = body?.get("pin")?.jsonPrimitive?.content
+            if (pin == null) {
+                call.respond(BadRequest, Failure(error = "Missing pin"))
+                return@post
+            }
+            val token = AuthManager.pair(pin)
+            if (token != null) {
+                call.response.cookies.append(Cookie("jezail_token", token, path = "/", httpOnly = true))
+                call.respond(Success(data = mapOf("token" to token)))
+            } else {
+                call.respond(Forbidden, Failure(error = "Invalid PIN"))
+            }
+        }
 
         route("/api") {
             get("/status", {
@@ -80,7 +141,6 @@ fun Application.configureRouting() {
                     )
                 )
             }
-
 
             route("json") {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -97,9 +157,7 @@ fun Application.configureRouting() {
 
             route("/swagger") {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    swaggerUI("/api/json") {
-                        // Add configuration for this Swagger UI "instance" here.
-                    }
+                    swaggerUI("/api/json")
                 } else {
                     get {
                         call.respondText(
@@ -141,7 +199,6 @@ fun Application.configureRouting() {
             if (resource != null) call.respondAssetNoCache(resource)
             else call.respond(NotFound)
         }
-
     }
 }
 

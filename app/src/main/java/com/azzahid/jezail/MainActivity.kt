@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity() {
                     serverPort = uiState.serverStatus.port,
                     isRooted = uiState.isRooted,
                     isAdbRunning = uiState.isAdbRunning,
+                    isAuthEnabled = uiState.isAuthEnabled,
+                    authPin = uiState.authPin,
                     onStartServer = {
                         viewModel.startServer(this)
                         delayedStatusUpdate()
@@ -80,7 +82,10 @@ class MainActivity : ComponentActivity() {
                     onStopAdb = {
                         viewModel.stopAdb()
                     },
-                    onPortChange = { newPort -> viewModel.setServerPort(newPort) })
+                    onToggleAuth = { enabled -> viewModel.toggleAuth(enabled) },
+                    onRegeneratePin = { viewModel.regeneratePin() },
+                    onPortChange = { newPort -> viewModel.setServerPort(newPort) },
+                    onAdbPortChange = { newPort -> viewModel.setAdbPort(newPort) })
             }
         }
 
