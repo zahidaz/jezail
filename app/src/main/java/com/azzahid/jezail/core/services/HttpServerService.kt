@@ -86,10 +86,18 @@ class HttpServerService : Service() {
     private fun startHttpServer(port: Int) {
         this.port = port
         httpServer.stop()
-        httpServer = buildServer(port).apply { start() }
-        isServerRunning = true
-        startForeground(NOTIFICATION_ID, createNotification(port))
-        Log.i(TAG, "Server started on port $port")
+        try {
+            httpServer = buildServer(port).apply { start() }
+            isServerRunning = true
+            startForeground(NOTIFICATION_ID, createNotification(port))
+            Log.i(TAG, "Server started on port $port")
+        } catch (e: Exception) {
+            isServerRunning = false
+            Log.e(TAG, "Failed to start server on port $port", e)
+            startForeground(NOTIFICATION_ID, createNotification(port))
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     private fun stopHttpServer() {
