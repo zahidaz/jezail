@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.azzahid.jezail.core.data.Preferences
 import com.azzahid.jezail.core.data.models.ServerStatus
 import com.azzahid.jezail.core.data.models.ServerUiState
 import com.azzahid.jezail.core.services.HttpServerService
@@ -20,7 +21,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(
         ServerUiState(
-            serverStatus = HttpServerService.defaultServerStatus,
+            serverStatus = HttpServerService.defaultServerStatus.copy(port = Preferences.serverPort),
             isRooted = false,
             isAdbRunning = false,
             adbVersion = "Unknown"
@@ -55,6 +56,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setServerPort(port: Int) {
+        Preferences.serverPort = port
         updateServerStatus(_uiState.value.serverStatus.copy(port = port))
     }
 
