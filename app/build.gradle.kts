@@ -3,13 +3,15 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 val jezailUiDownloadUrl =
     "https://github.com/zahidaz/jezail_ui/releases/latest/download/web-assets.zip"
+val refrida_download_url =
+    "https://github.com/zahidaz/refrida/releases/latest/download/refrida.zip"
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlinx-serialization")
-    id("de.undercouch.download") version "5.6.0"
+    id("de.undercouch.download") version "5.7.0"
 
     // Firebase plugins will be applied conditionally below
 }
@@ -156,16 +158,33 @@ val extractWebAssets = tasks.register<Copy>("extractWebAssets") {
     into(layout.buildDirectory.dir("generated/assets/web"))
 }
 
+val downloadRefrida = tasks.register<Download>("downloadRefrida") {
+    group = "assets"
+    description = "Downloads latest Refrida assets from GitHub releases"
+    src(refrida_download_url)
+    dest(layout.buildDirectory.file("downloads/refrida.zip"))
+    onlyIfModified(true)
+    useETag(true)
+}
+
+val extractRefrida = tasks.register<Copy>("extractRefrida") {
+    group = "assets"
+    description = "Extracts Refrida assets to build directory"
+    dependsOn(downloadRefrida)
+    from(zipTree(downloadRefrida.get().dest))
+    into(layout.buildDirectory.dir("generated/assets/refrida"))
+}
+
 afterEvaluate {
     tasks.named("mergeDebugAssets") {
-        dependsOn(extractWebAssets)
+        dependsOn(extractWebAssets, extractRefrida)
     }
 
     tasks.named("mergeReleaseAssets") {
-        dependsOn(extractWebAssets)
+        dependsOn(extractWebAssets, extractRefrida)
     }
 
     tasks.matching { it.name.contains("LintReportModel") }.configureEach {
-        dependsOn(extractWebAssets)
+        dependsOn(extractWebAssets, extractRefrida)
     }
 }

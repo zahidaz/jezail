@@ -63,6 +63,7 @@ fun buildServer(port: Int): CIOEmbeddedServer {
 
 fun Application.configureRouting() {
     val webFiles = AssetsResourceProvider("web")
+    val refridaFiles = AssetsResourceProvider("refrida")
 
     routing {
 
@@ -113,6 +114,18 @@ fun Application.configureRouting() {
             deviceRoutes()
             packageRoutes()
             filesRoutes()
+        }
+
+        get("/refrida") {
+            call.respondRedirect("/refrida/index.html", permanent = false)
+        }
+
+        get("/refrida/{file...}") {
+            val path = call.parameters.getAll("file")?.joinToString("/")
+                ?: return@get call.respond(NotFound)
+            val resource = refridaFiles.getResource(path)
+            if (resource != null) call.respondAssetNoCache(resource)
+            else call.respond(NotFound)
         }
 
         get {
