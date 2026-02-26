@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jezail - Terminal</title>
+<link rel="stylesheet" href="xterm.css">
+<style>
+html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+#terminal{height:100%}
+</style>
+</head>
+<body>
+<div id="terminal"></div>
+<script src="xterm.js"></script>
+<script src="xterm-addon-fit.js"></script>
+<script>
+var term=new Terminal({
+cursorBlink:true,
+convertEol:true,
+fontSize:14,
+fontFamily:"'JetBrains Mono','Fira Code','Cascadia Code','Consolas','Courier New',monospace",
+theme:{background:'#000',foreground:'#d4d4d4',cursor:'#d4d4d4',selectionBackground:'#264f78'},
+scrollback:10000
+});
+var fitAddon=new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal'));
+fitAddon.fit();
+
+var ws=null,connected=false,reconnectTimer=null;
+var buf='',hist=[],hIdx=-1,promptTimer=null;
+var cwd='/',pending='',initialized=false;
+var MK='__JEZAIL_PWD__';
+
+function ps1(){return '\x1b[32mroot\x1b[0m:\x1b[34m'+cwd+'\x1b[0m# '}
+function prompt(){term.write(ps1())}
+
+function promptLater(){
+if(promptTimer)clearTimeout(promptTimer);
+promptTimer=setTimeout(function(){promptTimer=null;prompt()},80);
+}
+
+function cancelPrompt(){
+if(promptTimer){clearTimeout(promptTimer);promptTimer=null}
+}
+
+function flush(){
+if(!initialized){
+var s=pending.indexOf(MK);
+if(s===-1)return;
+var e=pending.indexOf(MK,s+MK.length);
+if(e===-1)return;
+cwd=pending.substring(s+MK.length,e).trim();
+pending=pending.substring(e+MK.length);
+if(pending.charAt(0)==='\n')pending=pending.substring(1);
+initialized=true;
+}
+while(true){
+var s=pending.indexOf(MK);
+if(s===-1){term.write(pending);pending='';return}
+var e=pending.indexOf(MK,s+MK.length);
+if(e===-1){
+if(s>0)term.write(pending.substring(0,s));
+pending=pending.substring(s);
+return;
+}
+if(s>0)term.write(pending.substring(0,s));
+cwd=pending.substring(s+MK.length,e).trim();
+pending=pending.substring(e+MK.length);
+if(pending.charAt(0)==='\n')pending=pending.substring(1);
+}
+}
+
+function connect(){
+if(ws)return;
+pending='';initialized=false;
+var proto=location.protocol==='https:'?'wss:':'ws:';
+ws=new WebSocket(proto+'//'+location.host+'/api/device/terminal');
+
+ws.onopen=function(){
+connected=true;
+if(reconnectTimer){clearTimeout(reconnectTimer);reconnectTimer=null}
+term.focus();
+};
+
+ws.onmessage=function(e){
+cancelPrompt();
+pending+=e.data;
+flush();
+if(initialized)promptLater();
+};
+
+ws.onclose=function(e){
+connected=false;
+ws=null;
+cancelPrompt();
+if(e.reason)term.write('\n\x1b[31m'+e.reason+'\x1b[0m\n');
+else term.write('\n\x1b[31m[connection lost]\x1b[0m\n');
+term.write('\x1b[90mreconnecting...\x1b[0m\n');
+scheduleReconnect();
+};
+
+ws.onerror=function(){};
+}
+
+function scheduleReconnect(){
+if(reconnectTimer)return;
+reconnectTimer=setTimeout(function(){reconnectTimer=null;connect()},3000);
+}
+
+function clearBuf(){
+while(buf.length>0){buf=buf.slice(0,-1);term.write('\b \b')}
+}
+
+term.onData(function(data){
+if(!connected)return;
+for(var i=0;i<data.length;i++){
+var ch=data[i];
+var c=ch.charCodeAt(0);
+
+if(ch==='\r'){
+term.write('\n');
+if(buf.trim())hist.push(buf);
+hIdx=hist.length;
+if(ws&&ws.readyState===1)ws.send(buf+'\n');
+buf='';
+
+}else if(c===127){
+if(buf.length>0){buf=buf.slice(0,-1);term.write('\b \b')}
+
+}else if(c===3){
+clearBuf();
+term.write('^C\n');
+prompt();
+
+}else if(c===12){
+term.clear();
+prompt();
+term.write(buf);
+
+}else if(c===21){
+clearBuf();
+
+}else if(c===23){
+var t=buf.replace(/\S+\s*$/,'');
+var d=buf.length-t.length;
+buf=t;
+for(var j=0;j<d;j++)term.write('\b \b');
+
+}else if(c===27){
+if(i+2<data.length&&data[i+1]==='['){
+var a=data[i+2];
+if(a==='A'){
+clearBuf();
+if(hIdx>0){hIdx--;buf=hist[hIdx];term.write(buf)}
+}else if(a==='B'){
+clearBuf();
+if(hIdx<hist.length-1){hIdx++;buf=hist[hIdx];term.write(buf)}
+else{hIdx=hist.length;buf=''}
+}
+i+=2;
+}
+
+}else if(c>=32){
+buf+=ch;
+term.write(ch);
+}
+}
+});
+
+window.addEventListener('resize',function(){fitAddon.fit()});
+
+connect();
+</script>
+</body>
+</html>

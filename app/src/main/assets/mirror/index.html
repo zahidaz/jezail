@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jezail - Mirror</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#111;color:#e0e0e0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222;flex-shrink:0}
+h1 a{font-size:18px;font-weight:700;letter-spacing:4px;color:#E53935;text-decoration:none}
+.controls{display:flex;align-items:center;gap:8px}
+.status{width:8px;height:8px;border-radius:50%;background:#555;flex-shrink:0}
+.status.live{background:#4caf50}
+select,.btn{background:#1a1a1a;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;outline:none}
+select:hover,.btn:hover{border-color:#555;background:#252525}
+.btn:active{background:#333}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.main{flex:1;display:flex;min-height:0}
+.screen-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;min-width:0}
+#screen{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;background:#000}
+.msg{color:#888;font-size:14px}
+.sidebar{width:48px;border-left:1px solid #222;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;overflow-y:auto;flex-shrink:0}
+.sep{width:24px;height:1px;background:#333;margin:2px 0}
+.sidebar .btn{width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:8px}
+.sidebar .btn svg{width:16px;height:16px;fill:currentColor}
+@media(prefers-color-scheme:light){body{background:#fafafa;color:#1a1a1a}header,.sidebar{border-color:#e0e0e0}select,.btn{background:#fff;color:#1a1a1a;border-color:#ddd}select:hover,.btn:hover{border-color:#999;background:#f5f5f5}.btn:active{background:#eee}.sep{background:#e0e0e0}}
+</style>
+</head>
+<body>
+<header>
+<h1><a href="/">JEZAIL</a></h1>
+<div class="controls">
+<div class="status" id="status"></div>
+<select id="scale" title="Resolution">
+<option value="0.25">25%</option>
+<option value="0.5" selected>50%</option>
+<option value="0.75">75%</option>
+<option value="1">100%</option>
+</select>
+<select id="quality" title="Quality">
+<option value="30">Low</option>
+<option value="50" selected>Medium</option>
+<option value="80">High</option>
+</select>
+<select id="fps" title="Speed">
+<option value="500">2 FPS</option>
+<option value="200" selected>5 FPS</option>
+<option value="100">10 FPS</option>
+</select>
+<button class="btn" id="toggle" onclick="toggle()">Connect</button>
+</div>
+</header>
+<div class="main">
+<div class="screen-wrap">
+<img id="screen" alt="">
+<div class="msg" id="msg">Press Connect to start mirroring</div>
+</div>
+<div class="sidebar">
+<button class="btn" onclick="key('power')" title="Power"><svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42A6.92 6.92 0 0119 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.05.88-3.9 2.29-5.18L5.88 5.46A8.96 8.96 0 003 12c0 4.97 4.03 9 9 9s9-4.03 9-9a8.96 8.96 0 00-3.17-6.83z"/></svg></button>
+<div class="sep"></div>
+<button class="btn" onclick="key('back')" title="Back"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+<button class="btn" onclick="key('home')" title="Home"><svg viewBox="0 0 24 24"><path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg></button>
+<button class="btn" onclick="key('recent')" title="Recent Apps"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h8v8h-8v-8zm2 2v4h4v-4h-4z"/></svg></button>
+<button class="btn" onclick="key('menu')" title="Menu"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+<div class="sep"></div>
+<button class="btn" onclick="key('volume-up')" title="Volume Up"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.47 4.47 0 002.5-3.5zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button>
+<button class="btn" onclick="key('volume-down')" title="Volume Down"><svg viewBox="0 0 24 24"><path d="M18.5 12A4.5 4.5 0 0016 8.5v7a4.47 4.47 0 002.5-3.5zM5 9v6h4l5 5V4L9 9H5z"/></svg></button>
+<button class="btn" onclick="key('volume-mute')" title="Mute"><svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0014 8.5v2.09l2.41 2.41c.06-.31.09-.63.09-.99zM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0021 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4l-1.88 1.88L12 7.76V4z"/></svg></button>
+<div class="sep"></div>
+<button class="btn" onclick="screenshot()" title="Screenshot"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></button>
+<div class="sep"></div>
+<button class="btn" onclick="location.href='/terminal'" title="Terminal"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-2-1h-6v-2h6v2zM7.5 17l-1.41-1.41L8.67 13l-2.59-2.59L7.5 9l4 4-4 4z"/></svg></button>
+</div>
+</div>
+<script>
+var ws,img=document.getElementById('screen'),msg=document.getElementById('msg'),dot=document.getElementById('status'),btn=document.getElementById('toggle'),fps=document.getElementById('fps'),qual=document.getElementById('quality'),scl=document.getElementById('scale');
+function toggle(){ws?disconnect():connect()}
+function connect(){
+var proto=location.protocol==='https:'?'wss:':'ws:';
+ws=new WebSocket(proto+'//'+location.host+'/api/device/mirror?interval='+fps.value+'&quality='+qual.value+'&scale='+scl.value);
+ws.binaryType='blob';
+btn.textContent='Disconnect';
+msg.style.display='none';
+img.style.display='block';
+dot.classList.add('live');
+fps.disabled=true;qual.disabled=true;scl.disabled=true;
+ws.onmessage=function(e){
+var u=URL.createObjectURL(e.data);
+img.onload=function(){URL.revokeObjectURL(u)};
+img.src=u;
+};
+ws.onclose=function(){disconnect()};
+ws.onerror=function(){disconnect()};
+}
+function disconnect(){
+if(ws){ws.close();ws=null}
+btn.textContent='Connect';
+dot.classList.remove('live');
+fps.disabled=false;qual.disabled=false;scl.disabled=false;
+msg.style.display='block';
+msg.textContent='Disconnected';
+}
+function key(name){fetch('/api/device/keys/'+name,{method:'POST'})}
+function screenshot(){window.open('/api/device/screenshot','_blank')}
+</script>
+</body>
+</html>
